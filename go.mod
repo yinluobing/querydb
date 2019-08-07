@@ -1,4 +1,4 @@
-module mysql
+module github.com/pm-esd/mysql
 
 go 1.12
 
