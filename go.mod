@@ -1,8 +1,8 @@
 module github.com/pm-esd/mysql
 
-go 1.12
+go 1.13
 
 require (
 	github.com/go-sql-driver/mysql v1.4.1
-	google.golang.org/appengine v1.6.1 // indirect
+	google.golang.org/appengine v1.6.4 // indirect
 )
