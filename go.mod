@@ -1,4 +1,4 @@
-module github.com/pm-esd/mysql
+module github.com/pm-esd/querydb
 
 go 1.13
 
