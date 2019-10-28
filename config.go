@@ -94,7 +94,7 @@ func (configs *Configs) Get(database string, master bool) *QueryDb {
 	//数据库连接
 	db, err := sql.Open("mysql", config.URI())
 	//确保关闭
-	// defer db.Close()
+	defer db.Close()
 	if err != nil {
 		logrus.Fatal("DB连接错误！")
 	}
