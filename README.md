@@ -1,468 +1,141 @@
-# querydb
+## 简介
 
-这是一个针对 go mysql 查询的查询构造器，支持主从配置，支持读写分离。
+querydb是一个源于Laravel的ORM框架
 
-配置范例：
+## 用法示例
 
 ```go
+package main
 
-//配置集合
-    master := &querydb.Config{
-        Username:        "root",
-        Password:        "mysql",
-        Host:            "127.0.0.1",
-        Port:            "33061",
-        Charset:         "utf8mb4",
-        Database:        "ott",
-        ConnMaxLifetime: 120,
-        MaxIdleConns:    200,
-        MaxOpenConns:    800,
+import (
+	"fmt"
+	"github.com/pm-esd/querydb"
+)
+
+func main() {
+    //初始化配置
+    kConf := new(querydb.KConfig)
+    //初始化DB的配置
+    dbConfig := new(querydb.DBConfig)
+    dbConfig.Driver = "mysql"
+    dbConfig.Dsn = "root:123456@tcp(127.0.0.1:3306)/querydb?charset=utf8&parseTime=true"
+    dbConfig.IsMaster = true
+    kConf.DBConfigList = []querydb.DBConfig{*dbConfig}
+    querydb.RegisterDataBase(*kConf)
+
+    //原生SQL查询
+    querydb.Select("select * from user where id = ?", 1).ToArray()
+    //返回map[string][string]
+    querydb.Select("select * from user where id = ?", 1).ToMap()
+    //返回struct
+    type user struct {
+        Id int `db:"id;auto"`
+        Name string `db:"name"`
     }
-    slave1 := &querydb.Config{
-        Username:        "root",
-        Password:        "mysql",
-        Host:            "127.0.0.1",
-        Port:            "33061",
-        Charset:         "utf8mb4",
-        Database:        "ott",
-        ConnMaxLifetime: 120,
-        MaxIdleConns:    200,
-        MaxOpenConns:    800,
-    }
-    slave2 := &querydb.Config{
-        Username:        "root",
-        Password:        "mysql",
-        Host:            "127.0.0.1",
-        Port:            "33061",
-        Charset:         "utf8mb4",
-        Database:        "ott",
-        ConnMaxLifetime: 120,
-        MaxIdleConns:    200,
-        MaxOpenConns:    800,
-    }
-    master.SetSlave(slave1)
-    master.SetSlave(slave2)
-    instance := querydb.Default()
-    instance.SetConfig("test", master)
-    db := instance.Get("master", true)
-    rows, err := db.Table("video").GetRows()
-    if err == nil {
-        //生成map
-        list := querydb.ToMap(rows)
-        fmt.Println(list)
-    }
-```
-### 连接：
+    var result []user
+    querydb.Select("select * from user").ToStruct(&result)
+    fmt.Println("result:", result)
 
-获取连接：
+    //链式操作,返回单条数据
+    querydb.Table("user").Where("id", 1).First().ToArray()
 
-```go
-//获取一个连接实例 name实例名称，master 主从
-func Get(name string, master bool) *QueryDb
-```
+    //支持指定库操作
+    var u user
+    querydb.WithDB("mysql::master").Table("user").Where("id", 1).First().ToStruct(&u)
 
-```go
-//获取读实例
-dbread := querydb.Get("base", true)
-//获取读写实例
-dbwrite := querydb.Get("base", false)
-//标准获取
-crm := querydb.Get("crm", false)
-```
+    //批量插入支持map方式和struct方式
+    a1 := new(user)
+    a1.Name = "张三"
 
-返回的queryDb实现了接口：
+    a2 := new(user)
+    a2.Name = "李四"
 
-```go
-type Connection interface {
-	Exec(query string, args ...interface{}) (Result, error)
-	Query(query string, args ...interface{}) (*Rows, error)
-	NewQuery() *QueryBuilder
-	GetLastSql() Sql
+    users := []user{*a1, *a2}
+    querydb.Table("user").MultiInsert(users)
 }
 ```
 
-实例QueryDb有Begin()方法，返回一个QueryTx实例，QueryTx实例也实现了Connection接口
-
+### 查询数据
 ```go
-func (querydb *QueryDb) Begin() (*QueryTx, error)
-```
 
+//查询单条数据
+//返回[]string
+arr, err := querydb.Table("user").Where("id", 1).First().ToArray()
 
+//返回map[string][string
+mp, err := querydb.Table("user").Where("id", 1).First().ToMap()
 
-### 查询：
-
-```go
-//多条查询  返回的Rows和sql.Rows用户一致
-func (query *QueryBuilder) GetRows() (*Rows, error)
-//单条查询 dest用法和sql.QueryRow()用法一致
-func (query *QueryBuilder) GetRow(dest ...interface{}) error
-//总数查询
-func (query *QueryBuilder) Count() (int64, error)
-
-//提供辅助函数 把rows转化成对应的map
-func ToMap(rows *Rows) []map[string]interface{}
-
-//提供辅助函数 把rows转化成对应的 struct 切片
-//TODO
-```
-
-#### 基本用法：
-
-```go
-//多条查询
-rows, err := db.Table("d_ec_user.t_tags").Where("f_tag_id", 5).GetRows()
-if err == nil {
-   //生成map
-   list := querydb.ToMap(rows)
-   fmt.Println(list)
+type user struct {
+    Id int `db:"id"`
+    Name string `db:"name"`
 }
 
-//单条查询
-var title string
-	err = db.Table("d_ec_user.t_tags").Select("f_title").Where("f_tag_id", "=", 5).GetRow(&title)
-	fmt.Println(err, title)
-```
+//返回结构体
+var result user
+err := querydb.Table("user").Where("id", 1).First().ToStruct(&result)
 
-#### 复杂用法：
 
-##### 多表查询：
+//查询多条数据
+//返回[][]string
+arr, err := querydb.Table("user").Where("id", 1).Get().ToArray()
 
-```go
-//设置操作的表名称
-func (query *QueryBuilder) Table(tablename ...string) *QueryBuilder
-```
+//返回[]map[string][string
+mp, err := querydb.Table("user").Where("id", 1).Get().ToMap()
 
-```go
-
-//范例
-rows, err = crm.Table("d_ec_crm.t_eccrm_detail as d", "d_ec_crm.t_crm_relation as r").
-		Select("d.f_name", "r.f_user_id").
-		Where("d.f_crm_id=r.f_crm_id").
-		Where("d.f_crm_id", 232740452).
-		GetRows()
-//SELECT d.f_name,r.f_user_id FROM d_ec_crm.t_eccrm_detail as d,d_ec_crm.t_crm_relation as r WHERE d.f_crm_id=r.f_crm_id AND d.f_crm_id = "232740452"
-```
-
-##### 自定义查询列：
-
-```go
-func (query *QueryBuilder) Select(columns ...string) *QueryBuilder
-```
-
-```go
-var max, min int
-err = crm.Table("d_ec_crm.t_eccrm_detail").
-   Select("max(f_crm_id),min(f_crm_id)").
-   GetRow(&max, &min)
-```
-
-即只要满足为string，select可以支持sql的各类复杂用法
-
-##### where：
-
-```go
-//and
-func (query *QueryBuilder) Where(column string, value ...interface{}) *QueryBuilder
-//or
-func (query *QueryBuilder) OrWhere(column string, value ...interface{}) *QueryBuilder
-
-//相等
-func (query *QueryBuilder) Equal(column string, value interface{}) *QueryBuilder
-func (query *QueryBuilder) OrEqual(column string, value interface{}) *QueryBuilder
-//不相等
-func (query *QueryBuilder) NotEqual(column string, value interface{}) *QueryBuilder
-func (query *QueryBuilder) OrNotEqual(column string, value interface{}) *QueryBuilder
-```
-
-一个参数的时候为原生where，2个参数的时候为column等,3个参数的时候第一个参数为列，第2个是操作，第3个是值
-
-```Go
-crm.Table("d_ec_crm.t_eccrm_detail").Where("f_crm_id=230740537").GetRows()
-crm.Table("d_ec_crm.t_eccrm_detail").Where("f_crm_id",230740537).GetRows()
-crm.Table("d_ec_crm.t_eccrm_detail").Where("f_crm_id","=",230740537).GetRows()
-crm.Table("d_ec_crm.t_eccrm_detail").Equal("f_crm_id",230740537).GetRows()
-```
-
-其中操作符可以是：>,<,>=,<=等
-
-其他特殊操作：
-
-```go
-//Between
-func (query *QueryBuilder) Between(column string, value1 interface{}, value2 interface{}) *QueryBuilder
-func (query *QueryBuilder) OrBetween(column string, value1 interface{}, value2 interface{}) *QueryBuilder
-func (query *QueryBuilder) NotBetween(column string, value1 interface{}, value2 interface{}) *QueryBuilder
-func (query *QueryBuilder) NotOrBetween(column string, value1 interface{}, value2 interface{}) *QueryBuilder
-
-//in
-func (query *QueryBuilder) In(column string, value ...interface{}) *QueryBuilder
-func (query *QueryBuilder) OrIn(column string, value ...interface{}) *QueryBuilder
-func (query *QueryBuilder) NotIn(column string, value ...interface{}) *QueryBuilder
-func (query *QueryBuilder) OrNotIn(column string, value ...interface{}) *QueryBuilder
-
-//是否是空
-func (query *QueryBuilder) IsNULL(column string) *QueryBuilder
-func (query *QueryBuilder) OrIsNULL(column string) *QueryBuilder
-func (query *QueryBuilder) IsNotNULL(column string) *QueryBuilder
-func (query *QueryBuilder) OrIsNotNULL(column string) *QueryBuilder
-//like查询
-func (query *QueryBuilder) Like(column string, value interface{}) *QueryBuilder
-func (query *QueryBuilder) OrLike(column string, value interface{}) *QueryBuilder
-```
-
-```go
-var crmname string
-err = crm.Table("d_ec_crm.t_eccrm_detail").
-	Select("f_name").
-	Between("f_crm_id", 230740537, 230740560).
-	GetRow(&crmname)
-//SELECT f_name FROM d_ec_crm.t_eccrm_detail WHERE  f_crm_id BETWEEN "230740537" AND "230740560"
-
-err = crm.Table("d_ec_crm.t_eccrm_detail").Select("f_name").In("f_crm_id", 230740537, 230740560).GetRow(&crmname)
-err = crm.Table("d_ec_crm.t_eccrm_detail").Select("f_name").In("f_crm_id", []interface{}{230740537, 230740560}...).GetRow(&crmname)
-
-err = crm.Table("d_ec_crm.t_eccrm_detail").Select("f_name").Like("f_name", "李%").GetRow(&crmname)
-```
-
-##### Limit,OrderBy,GroupBy,Skip,Distinct：
-
-```go
-func (query *QueryBuilder) Distinct() *QueryBuilder
-func (query *QueryBuilder) GroupBy(groups ...string) *QueryBuilder
-//可以多次调用
-func (query *QueryBuilder) OrderBy(column string, direction string) *QueryBuilder
-func (query *QueryBuilder) Offset(offset int) *QueryBuilder
-//同Offset
-func (query *QueryBuilder) Skip(offset int) *QueryBuilder
-func (query *QueryBuilder) Limit(limit int) *QueryBuilder
-```
-
-```go
-rows, err = crm.Table("d_ec_crm.t_eccrm_detail").
-	Select("f_name", "f_crm_id", "f_user_id", "f_corp_id").
-	Distinct().
-	Where("f_corp_id", 21299).
-	Where("f_user_id", 0).
-	OrderBy("f_create_time", "desc").
-	OrderBy("f_crm_id", "asc").
-	GroupBy("f_user_id", "f_corp_id").
-	Offset(2).
-	Limit(10).
-	GetRows()
-fmt.Println(querydb.ToMap(rows))
-//SELECT  DISTINCT f_name,f_crm_id,f_user_id,f_corp_id FROM d_ec_crm.t_eccrm_detail WHERE  f_corp_id = "21299" AND f_user_id = "0" GROUP BY f_user_id,f_corp_id ORDER BY f_create_time DESC,f_crm_id ASC LIMIT 2,10 该语句在特定mysql模式下不合法
-```
-
-
-
-##### Join，LeftJoin RightJoin:
-
-```go
-func (query *QueryBuilder) Join(tablename string, on string) *QueryBuilder
-func (query *QueryBuilder) LeftJoin(tablename string, on string) *QueryBuilder
-func (query *QueryBuilder) RightJoin(tablename string, on string) *QueryBuilder
-```
-
-```go
-var crmname string
-var crmid int64
-err = crm.Table("d_ec_crm.t_eccrm_detail as d").
-	Join("d_ec_crm.t_crm_relation as r", "d.f_crm_id=r.f_crm_id").
-	Select("d.f_name", "d.f_crm_id").
-	Where("d.f_corp_id", 21299).
-	Where("r.f_user_id", 0).
-	GetRow(&crmname, &crmid)
-
-//SELECT d.f_name,d.f_crm_id FROM d_ec_crm.t_eccrm_detail as d JOIN d_ec_crm.t_crm_relation as r ON d.f_crm_id=r.f_crm_id WHERE  d.f_corp_id = "21299" AND r.f_user_id = "0" LIMIT 0,1
-```
-
-##### Union,UnionAll
-
-```go
-func (query *QueryBuilder) Union(unions ...QueryBuilder) *QueryBuilder
-func (query *QueryBuilder) UnionAll(unions ...QueryBuilder) *QueryBuilder
-func (query *QueryBuilder) UnionOffset(offset int) *QueryBuilder
-func (query *QueryBuilder) UnionLimit(limit int) *QueryBuilder
-func (query *QueryBuilder) UnionOrderBy(column string, direction string) *QueryBuilder
-```
-
-```go
-union := crm.Table("d_ec_crm.t_eccrm_detail").
-	Select("f_name", "f_crm_id", "f_user_id", "f_corp_id").
-	Where("f_corp_id", 271959).
-	Where("f_user_id", 0).
-	OrderBy("f_create_time", "desc").
-	Offset(2).
-	Limit(10)
-
-rows, err = crm.Table("d_ec_crm.t_eccrm_detail").
-	Select("f_name", "f_crm_id", "f_user_id", "f_corp_id").
-	Where("f_corp_id", 21299).
-	Where("f_user_id", 0).
-	OrderBy("f_create_time", "asc").
-	Offset(2).
-	Limit(10).
-	Union(*union).
-	//UnionOffset(0).
-	//UnionLimit(10).
-	UnionOrderBy("f_crm_id", "desc").
-	GetRows()
-fmt.Println(querydb.ToMap(rows))
-
-//(SELECT f_name,f_crm_id,f_user_id,f_corp_id FROM d_ec_crm.t_eccrm_detail WHERE  f_corp_id = "21299" AND f_user_id = "0" ORDER BY f_create_time ASC LIMIT 2,10) UNION (SELECT f_name,f_crm_id,f_user_id,f_corp_id FROM d_ec_crm.t_eccrm_detail WHERE  f_corp_id = "271959" AND f_user_id = "0" ORDER BY f_create_time DESC LIMIT 2,10) ORDER BY f_crm_id DESC"
-```
-
-##### 原生支持：
-
-不建议这样用
-
-```go
-sql := "select count(*) as n,f_user_id from t_eccrm_detail where f_corp_id=? group by f_user_id"
-rows, err = db.Query(sql, 21299)
-fmt.Println(querydb.ToMap(rows))
-```
-
-
-
-### 插入：
-
-```go
-//返回受影响行数和错误
-func (query *QueryBuilder) Insert(datas ...map[string]interface{}) (int64, error)
-//返回对应的自增id
-func (query *QueryBuilder) InsertGetId(datas map[string]interface{}) (int64, error)
-```
-
-```go
-data := map[string]interface{}{"f_title": "标题"}
-//获取自增ID插入
-id, err := db.Table("d_ec_user.t_tags").InsertGetId(data)
-fmt.Println(id, err)
-
-//单条插入
-id, err = db.Table("d_ec_user.t_tags").Insert(data)
-fmt.Println(id, err)
-
-//批量插入
-num, err := db.Table("d_ec_user.t_tags").Insert(data, data)
-fmt.Println(num, err)
-```
-
-
-
-### 更新：
-
-返回受影响行数，和错误
-
-```go
-func (query *QueryBuilder) Update(datas map[string]interface{}) (int64, error)
-
-//插入更新ON DUPLICATE KEY UPDATE
-//第一个参数为插入的数据，第一个参数为如果数据操作要更新的数据
-func (query *QueryBuilder) InsertUpdate(insert map[string]interface{}, update map[string]interface{}) (int64, error)
-
-//替换
-func (query *QueryBuilder) Replace(datas ...map[string]interface{}) (int64, error)
-```
-
-```go
-num1, err1 := db.Table("d_ec_user.t_tags").
-   Where("f_tag_id", "<=", 8).
-   Where("f_count", 0).
-   Limit(2).
-   OrderBy("f_tag_id", "desc").
-   Update(map[string]interface{}{"f_title": `更换的表体"双引号",'单引号'`})
-
-   //UPDATE d_ec_user.t_tags SET f_title = \"更换的表体\\\"双引号\\\",'单引号'\" WHERE  f_tag_id <= \"8\" AND f_count = \"0\" ORDER BY f_tag_id DESC LIMIT 2"
-fmt.Println(num1, err1)
-
-//insertupdate
-num2, err2 := db.Table("d_ec_user.t_tags").InsertUpdate(map[string]interface{}{"f_title": "插入的数据", "f_tag_id": 100}, map[string]interface{}{"f_count": querydb.NewEpr("f_count+2")})
-	fmt.Println(num2, err2)
-
-//replace
-num3, err3 := db.Table("d_ec_user.t_tags").Replace(map[string]interface{}{"f_title": `替换的数据`, "f_tag_id": 100})
-	fmt.Println(num3, err3)
-```
-
-针对更新提供`querydb.NewEpr`(data string) 用于原生支持db相关操作：
-
-```go
-querydb.NewEpr("f_count+2")
-```
-
-
-
-### 删除：
-
-返回被删除的行数和错误
-
-```go
-func (query *QueryBuilder) Delete() (int64, error)
-```
-
-```Go
-deletenum, err := db.Table("d_ec_user.t_tags").In("f_tag_id", []interface{}{1, 2, 3}...).Delete()
-deletenum, err = db.Table("d_ec_user.t_tags").In("f_tag_id", 1, 2, 3).Delete()
-fmt.Println(deletenum, err)
-```
-
-### 事务：
-
-```go
-//获取一个tx实例
-tx, err := crm.Begin()
-if err != nil {
-	fmt.Println(err)
+type user struct {
+    Id int `db:"id"`
+    Name string `db:"name"`
 }
-r, err := tx.Table("d_ec_crm.t_crm_change").
-	Insert(map[string]interface{}{"f_crm_id": 123})
 
-fmt.Println(r)
-//提交一个事务
-err = tx.Commit()
-if err != nil {
-	tx.Rollback()
+//返回结构体
+var result []user
+err := querydb.Table("user").Where("id", 1).Get().ToStruct(&result)
+
+```
+
+### 插入数据
+```go
+
+//通过结构体插入
+type user struct {
+	Id int `db:"id;auto"`   //tag中包含auto属性的时候，插入时会自动过滤
+	Name string `db:"name"`
 }
+
+a1 := new(user)
+a1.Name = "张三"
+
+//插入单条
+querydb.Table("user").Insert(a1)
+
+//插入多条
+a1 := new(user)
+a1.Name = "张三"
+
+a2 := new(user)
+a2.Name = "李四"
+users := []user{*a1, *a2}
+querydb.Table("user").MultiInsert(users)
+
+//通过map方式插入
+user := make(map[string]string)
+user["name"] = "张三"
+querydb.Table("user").Insert(user)
+
 ```
 
 
-
-### 调试：
-
-直接调用db实例：的GetLastSql
-
+### 更新数据
 ```go
-type Sql struct {
-	Sql      string
-	Args     []interface{}
-	CostTime time.Duration
-}
-func (querydb *QueryDb) GetLastSql() Sql
+
+data := make(map[string]interface{})
+data["name"] = "李四"
+
+querydb.Table("user").Where("id", 1).Update(data)
+
 ```
 
+### 删除数据
 ```go
-fmt.Println(db.GetLastSql())//{INSERT INTO d_ec_crm.t_crm_change  (f_crm_id) VALUES (?) [1236] 3.511848ms}
-
-//或者直接输出完整sql
-fmt.Println(db.GetLastSql().ToString())//INSERT INTO d_ec_crm.t_crm_change  (f_crm_id) VALUES ("1236")
-//json格式
-fmt.Println(db.GetLastSql().ToJson()) //{"sql":"SELECT f_crm_id FROM d_ec_crm.t_crm_change WHERE  f_crm_id = \"1236\" LIMIT 0,1","costtime":"1.050622ms"}
-
-
+querydb.Table("user").Where("id", 1).Delete()
 ```
-
-日志输出：
-
-```go
-//设置Logger
-querydb.SetLogger(log.New(os.Stdout, "", log.Ldate))
-//打印执行日志
-querydb.SetExecLog(true)
-```
-
-### 注意事项：
-
-1，使用事务的时候，一定要保证用的的db是事务的那个db。
-
-2，暂且不支持其他数据库类型。

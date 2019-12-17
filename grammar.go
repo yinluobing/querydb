@@ -1,251 +1,246 @@
 package querydb
 
 import (
-	"strconv"
+	"bytes"
+	"fmt"
 	"strings"
 )
 
-//Grammar sql 语法
 type Grammar struct {
-	builder *QueryBuilder
-	method  string
 }
 
-func (g Grammar) compileSelect() string {
-	if len(g.builder.columns) < 1 {
-		return "*"
-	}
-	return strings.Join(g.builder.columns, ",")
-}
-func (g Grammar) compileTable(from bool) string {
-	if len(g.builder.table) < 1 {
-		return ""
-	}
-	if from {
-		return " FROM " + strings.Join(g.builder.table, ",")
-	} else {
-		return strings.Join(g.builder.table, ",")
-	}
-
-}
-func (g Grammar) compileOrder(isunion bool) string {
-	orders := g.builder.orders
-	if isunion {
-		orders = g.builder.unorders
-	}
-	if len(orders) < 1 {
-		return ""
-	}
-	return " ORDER BY " + strings.Join(orders, ",")
+func NewGrammar() *Grammar {
+	return new(Grammar)
 }
 
-func (g Grammar) compileGroup() string {
-	if len(g.builder.groups) < 1 {
-		return ""
+func (g *Grammar) compileSelect(b *Builder) string {
+
+	if len(b.columns) == 0 {
+		b.columns = []string{"*"}
 	}
-	return " GROUP BY " + strings.Join(g.builder.groups, ",")
+
+	return fmt.Sprintf("select %s", strings.TrimSpace(strings.Join(g.compileComponents(b), " ")))
 }
 
-func (g Grammar) compileLimit(isunion bool) string {
-	limit := g.builder.limit
-	offset := g.builder.offset
-	if isunion {
-		limit = g.builder.unlimmit
-		offset = g.builder.offset
+func (g *Grammar) compileUpdate(b *Builder) string {
+
+	var sql string
+
+	comm := ""
+	for _, column := range b.columns {
+		sql = fmt.Sprintf("%s%s %s = %s", strings.TrimSpace(sql), comm, g.wrapTable(column), "?")
+		comm = ","
 	}
-	if limit > 0 {
-		return " LIMIT " + strconv.Itoa(offset) + "," + strconv.Itoa(limit)
-	} else {
-		return ""
-	}
+
+	sql = fmt.Sprintf("update %s set %s %s", g.wrapTable(b.table), sql, g.compileWheres(b))
+
+	return sql
 }
 
-func (g Grammar) compileDistinct() string {
-	if g.builder.distinct {
-		return " DISTINCT "
+func (g *Grammar) compileInsert(b *Builder) string {
+
+	var sql string
+	comm := ""
+
+	for _, column := range b.columns {
+		sql = fmt.Sprintf("%s%s %s", strings.TrimSpace(sql), comm, g.wrapColumn(column))
+		comm = ","
 	}
-	return ""
+
+	placeHolder := strings.Repeat("?,", len(b.columns))
+
+	sql = fmt.Sprintf("insert into %s (%s) values (%s) ", g.wrapTable(b.table), strings.TrimSpace(sql), placeHolder[:len(placeHolder)-1])
+
+	return sql
 }
-func (g Grammar) compileWhere() string {
-	len := len(g.builder.where)
-	if len < 1 {
-		return ""
+
+func (g *Grammar) compileDelete(b *Builder) string {
+	sql := fmt.Sprintf("delete %s %s", g.compileFrom(b), g.compileWheres(b))
+	return strings.TrimSpace(sql)
+}
+
+func (g *Grammar) compileComponents(b *Builder) []string {
+	sql := make([]string, 0)
+
+	if b.agg != nil {
+		sql = append(sql, g.compileAggregate(b))
 	}
-	w := g.builder.where
-	sql := " WHERE "
-	for i := 0; i < len; i++ {
-		if i > 0 {
-			sql += " " + w[i].do
+
+	if len(b.columns) > 0 && b.agg == nil {
+		sql = append(sql, g.compileColumns(b))
+	}
+
+	if b.table != "" {
+		sql = append(sql, g.compileFrom(b))
+	}
+
+	if len(b.joins) > 0 {
+		sql = append(sql, g.compileJoins(b))
+	}
+
+	if len(b.wheres) > 0 {
+		whereSql := g.compileWheres(b)
+		if whereSql != "" {
+			sql = append(sql, whereSql)
 		}
-		sql += " " + w[i].column
-		if w[i].operator != "" {
-			switch w[i].operator {
-			case BETWEEN, NOTBETWEEN:
-				sql += " " + w[i].operator + " ? AND ?"
-			case IN, NOTIN:
-				sql += " " + w[i].operator + "(?" + strings.Repeat(",?", w[i].valuenum-1) + ")"
-			case ISNULL, ISNOTNULL:
-				sql += " " + w[i].operator
-				break
-			default:
-				sql += " " + w[i].operator + " ?"
+	}
+
+	if len(b.groups) > 0 {
+		sql = append(sql, g.compileGroups(b))
+	}
+
+	if len(b.havings) > 0 {
+		sql = append(sql, g.compileHaving(b))
+	}
+
+	if len(b.orders) > 0 {
+		sql = append(sql, g.compileOrders(b))
+	}
+
+	if b.offsetFlag {
+		sql = append(sql, g.compileOffset(b))
+	}
+
+	if b.limitFlag {
+		sql = append(sql, g.compileLimit(b))
+	}
+
+	if len(b.unions) > 0 {
+		sql = append(sql, g.compileUnions(b))
+	}
+	return sql
+}
+
+func (g *Grammar) compileAggregate(b *Builder) string {
+	column := b.agg.column
+	if b.distinct && b.agg.column != "*" {
+		column = fmt.Sprintf("distinct %s", g.wrapColumn(column))
+	}
+
+	return fmt.Sprintf("%s(%s) as aggregate", b.agg.function, g.wrapColumn(column))
+}
+
+func (g *Grammar) compileColumns(b *Builder) string {
+
+	if b.distinct {
+		return fmt.Sprintf("distinct %s", g.wrapColumn(b.columns...))
+	}
+
+	return g.wrapColumn(b.columns...)
+
+}
+
+func (g *Grammar) compileFrom(b *Builder) string {
+	return fmt.Sprintf("from %s", g.wrapTable(b.table))
+}
+
+func (g *Grammar) compileJoins(b *Builder) string {
+	var sql string
+	comm := ""
+	for _, v := range b.joins {
+		sql = fmt.Sprintf("%s %s %s join %s on %s %s %s", strings.TrimSpace(sql), comm, v.typ, g.wrapTable(v.table), g.wrapColumn(v.column), v.operator, g.wrapColumn(v.value))
+		comm = v.glue
+	}
+	return strings.TrimSpace(sql)
+}
+
+func (g *Grammar) compileWheres(b *Builder) string {
+
+	var sql string
+
+	for k, w := range b.wheres {
+		if k == 0 {
+			w.glue = ""
+		}
+
+		switch w.typ {
+		case "basic":
+			sql = fmt.Sprintf("%s %s %s %s %s", strings.TrimSpace(sql), w.glue, g.wrapColumn(w.column.(string)), w.operator, "?")
+		case "null":
+			sql = fmt.Sprintf("%s %s %s %s %s", strings.TrimSpace(sql), w.glue, g.wrapColumn(w.column.(string)), w.operator, w.value)
+		case "in":
+			placeHolder := strings.Repeat("?,", len(w.values))
+			sql = fmt.Sprintf("%s %s %s %s (%s)", strings.TrimSpace(sql), w.glue, g.wrapColumn(w.column.(string)), w.operator, placeHolder[:len(placeHolder)-1])
+		}
+	}
+
+	return fmt.Sprintf("where %s", strings.TrimSpace(sql))
+}
+
+func (g *Grammar) compileGroups(b *Builder) string {
+	buf := bytes.NewBufferString("group by ")
+	comm := ""
+	for _, column := range b.groups {
+		buf.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s", comm, g.wrapColumn(column))))
+		comm = ","
+	}
+
+	return buf.String()
+}
+
+func (g *Grammar) compileHaving(b *Builder) string {
+	var sql string
+
+	for k, v := range b.havings {
+		if k == 0 {
+			v.glue = ""
+		}
+		sql = fmt.Sprintf("%s %s %s %s %s", strings.TrimSpace(sql), v.glue, g.wrapColumn(v.column.(string)), v.operator, "?")
+	}
+
+	return fmt.Sprintf("having %s", strings.TrimSpace(sql))
+}
+
+func (g *Grammar) compileOrders(b *Builder) string {
+	buf := bytes.NewBufferString("order by ")
+	comm := ""
+	for _, o := range b.orders {
+		buf.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s %s", comm, g.wrapColumn(o.column), o.direction)))
+		comm = ","
+	}
+
+	return buf.String()
+}
+
+func (g *Grammar) compileOffset(b *Builder) string {
+	return fmt.Sprintf("offset %d", b.offset)
+}
+
+func (g *Grammar) compileLimit(b *Builder) string {
+	return fmt.Sprintf("limit %d", b.limit)
+}
+
+func (g *Grammar) compileUnions(b *Builder) string {
+	var sql string
+	for _, v := range b.unions {
+		if v.all {
+			sql = fmt.Sprintf("%s union all %s", strings.TrimSpace(sql), v.query.toSQL())
+		} else {
+			sql = fmt.Sprintf("%s union %s", strings.TrimSpace(sql), v.query.toSQL())
+		}
+	}
+	return sql
+}
+
+func (g *Grammar) wrapTable(table string) string {
+	return fmt.Sprintf("%s%s", kdb.tablePrefix, table)
+}
+
+func (g *Grammar) wrapColumn(columns ...string) string {
+	for i, column := range columns {
+		segments := strings.Split(column, ".")
+		if len(segments) > 1 {
+			segments[0] = g.wrapTable(segments[0])
+			if segments[1] != "*" && !strings.Contains(segments[0], "->") {
+				segments[1] = fmt.Sprintf("`%s`", segments[1])
+			}
+		} else {
+			if segments[0] != "*" && !strings.Contains(segments[0], "->") {
+				segments[0] = fmt.Sprintf("`%s`", segments[0])
 			}
 		}
-
+		column = strings.Join(segments, ".")
+		columns[i] = column
 	}
-	return sql
-}
-func (g Grammar) compileJoin() string {
-	len := len(g.builder.joins)
-	if len < 1 {
-		return ""
-	}
-	sql := ""
-	joins := g.builder.joins
-	for i := 0; i < len; i++ {
-		sql += " " + joins[i].operator + " " + joins[i].table + " ON " + joins[i].on
-	}
-	return sql
-}
-func (g Grammar) compileUnion() string {
-	len := len(g.builder.unions)
-	if len < 1 {
-		return ""
-	}
-	sql := ""
-	unions := g.builder.unions
-	var g1 Grammar
-
-	for i := 0; i < len; i++ {
-		g1.builder = &unions[i].query
-
-		sql += " " + unions[i].operator
-		sql += " (" + g1.Select() + ")"
-	}
-
-	return sql
-}
-
-//Select 构造select
-func (g Grammar) Select() string {
-	s1, s2 := "", ""
-	if len(g.builder.unions) > 0 {
-		s1 = "("
-		s2 = ")"
-	}
-	sql := s1 + "SELECT "
-	sql += g.compileDistinct()
-	sql += g.compileSelect()
-	sql += g.compileTable(true)
-	sql += g.compileJoin()
-	sql += g.compileWhere()
-	sql += g.compileGroup()
-	sql += g.compileOrder(false)
-	sql += g.compileLimit(false)
-	sql += s2
-	sql += g.compileUnion()
-	sql += g.compileLimit(true)
-	sql += g.compileOrder(true)
-
-	return sql
-}
-func (g Grammar) Insert() string {
-	sql := "INSERT INTO "
-	sql += g.compileTable(false)
-	sql += " " + g.compileInsertValue()
-	return sql
-}
-func (g Grammar) Replace() string {
-	sql := "REPLACE INTO "
-	sql += g.compileTable(false)
-	sql += g.compileInsertValue()
-	return sql
-}
-func (g Grammar) compileInsertValue() string {
-	sql := " ("
-	for k, v := range g.builder.datas {
-		for kv, vv := range v {
-			if k == 0 { //取第一列
-				g.builder.columns = append(g.builder.columns, kv)
-			}
-			g.builder.addArg(vv)
-		}
-	}
-	sql += strings.Join(g.builder.columns, ",")
-	collen := len(g.builder.columns)
-	sql += ") VALUES (?" + strings.Repeat(",?", collen-1) + ")"
-	len := len(g.builder.datas)
-	if len > 1 {
-		for i := 1; i < len; i++ {
-			sql += " ,(?" + strings.Repeat(",?", collen-1) + ")"
-		}
-	}
-	return sql
-}
-func (g Grammar) Delete() string {
-	sql := "DELETE "
-	sql += g.compileTable(true)
-	sql += g.compileWhere()
-	sql += g.compileOrder(false)
-	if g.builder.limit > 0 {
-		sql += " LIMIT " + strconv.Itoa(g.builder.limit)
-	}
-	return sql
-}
-func (g Grammar) compileUpdateValue() string {
-	sql := ""
-	data := g.builder.datas[0] //取一个
-	for k, v := range data {
-		switch vv := v.(type) {
-		case Epr:
-			sql += k + " = " + vv.ToString() + ","
-		default:
-			sql += k + " = ?,"
-			g.builder.beforeArg(vv)
-		}
-	}
-	sql = strings.Trim(sql, ",")
-	return sql
-}
-func (g Grammar) Update() string {
-	sql := "UPDATE "
-	sql += g.compileTable(false)
-	sql += " SET "
-	sql += g.compileUpdateValue()
-	//sql += strings.Join(g.builder.columns, " = ?,") + " = ?"
-	sql += g.compileWhere()
-	sql += g.compileOrder(false)
-	if g.builder.limit > 0 {
-		sql += " LIMIT " + strconv.Itoa(g.builder.limit)
-	}
-	return sql
-}
-func (g Grammar) InsertUpdate() string {
-	old := g.builder.datas
-	//insert
-	g.builder.datas = old[:1]
-	sql := "INSERT INTO "
-	sql += g.compileTable(false)
-	sql += " " + g.compileInsertValue()
-	sql += " ON DUPLICATE KEY UPDATE "
-	g.builder.datas = old[1:]
-	sql += g.compileUpdateValue()
-	return sql
-}
-func (g Grammar) ToSql() string {
-	g.method = strings.ToUpper(g.method)
-	switch g.method {
-	case "INSERT":
-		return g.Insert()
-	case "DELETE":
-		return g.Delete()
-	case "UPDATE":
-		return g.Update()
-	case "REPLACE":
-		return g.Replace()
-	case "INSERTUPDATE":
-		return g.Replace()
-	default:
-		return g.Select()
-	}
+	return fmt.Sprintf("%s", strings.Join(columns, ", "))
 }
