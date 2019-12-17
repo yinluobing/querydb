@@ -93,12 +93,9 @@ func (configs *Configs) Get(database string, master bool) *QueryDb {
 	}
 	//数据库连接
 	db, err := sql.Open("mysql", config.URI())
-	//确保关闭
-	defer db.Close()
 	if err != nil {
 		logrus.Fatal("DB连接错误！")
 	}
-
 	if config.MaxOpenConns > 0 {
 		db.SetMaxOpenConns(config.MaxOpenConns)
 	}
@@ -108,6 +105,8 @@ func (configs *Configs) Get(database string, master bool) *QueryDb {
 	if config.ConnMaxLifetime > 0 {
 		db.SetConnMaxLifetime(config.ConnMaxLifetime)
 	}
+	//确保关闭
+	// defer db.Close()
 	configs.connections[keyname] = &QueryDb{db: db, config: config}
 	return configs.connections[keyname]
 }

@@ -84,6 +84,11 @@ func (querydb *QueryDb) NewQuery() *QueryBuilder {
 	return &QueryBuilder{connection: querydb}
 }
 
+//关闭连接
+func (querydb *QueryDb) Close() {
+	querydb.db.Close()
+}
+
 //Table 查询构造器快速调用
 func (querydb *QueryDb) Table(tablename ...string) *QueryBuilder {
 	query := &QueryBuilder{connection: querydb}
