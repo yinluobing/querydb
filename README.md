@@ -14,7 +14,7 @@
         Port:            "33061",
         Charset:         "utf8mb4",
         Database:        "ott",
-        ConnMaxLifetime: 120,
+        MaxLifetime: 120,
         MaxIdleConns:    200,
         MaxOpenConns:    800,
     }
@@ -25,7 +25,7 @@
         Port:            "33061",
         Charset:         "utf8mb4",
         Database:        "ott",
-        ConnMaxLifetime: 120,
+        MaxLifetime: 120,
         MaxIdleConns:    200,
         MaxOpenConns:    800,
     }
@@ -36,7 +36,7 @@
         Port:            "33061",
         Charset:         "utf8mb4",
         Database:        "ott",
-        ConnMaxLifetime: 120,
+        MaxLifetime: 120,
         MaxIdleConns:    200,
         MaxOpenConns:    800,
     }

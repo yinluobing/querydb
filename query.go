@@ -44,6 +44,8 @@ func (querydb *QueryDb) Select(query string, bindings []interface{}) *Rows {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
 	rows, err := querydb.queryRows(query, bindings)
+
+	fmt.Println(query, bindings)
 	if err != nil {
 		err = NewDBError(err.Error(), querydb.GetLastSQL())
 		logrus.Println(err.Error())
@@ -199,7 +201,7 @@ func (querydb *QueryDb) queryRows(query string, bindings []interface{}) (rows *s
 
 func (querydb *QueryDb) getConn() (*sql.Conn, error) {
 	var err error
-	var db *sql.DB
+	var db *sql.DB = querydb.db
 	if querydb.conn != nil {
 		return querydb.conn, nil
 	}
