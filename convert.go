@@ -92,9 +92,10 @@ func extractTagInfo(st reflect.Value) (tagList map[string]reflect.Value, err err
 
 				for k, ptr := range t {
 					if _, ok := tagList[k]; ok {
-						return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, k)
+						//TODO
+						// return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, k)
+						return nil, fmt.Errorf("%s:%s is exists", "json", k)
 					}
-
 					tagList[k] = ptr
 				}
 			}
@@ -129,20 +130,25 @@ func extractTagInfo(st reflect.Value) (tagList map[string]reflect.Value, err err
 
 				for k, ptr := range t {
 					if _, ok := tagList[k]; ok {
-						return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, k)
+						//TODO
+						// return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, k)
+						return nil, fmt.Errorf("%s:%s is exists", "json", k)
 					}
 					tagList[k] = ptr
 				}
 			}
 		}
-
-		tagName := stVal.Type().Field(i).Tag.Get(kdb.structTag)
+		//TODO
+		// tagName := stVal.Type().Field(i).Tag.Get(kdb.structTag)
+		tagName := stVal.Type().Field(i).Tag.Get("json")
 		if tagName != "" {
 			//tag内容通过";"进行分割
-			attr := strings.Split(tagName, ";")
+			attr := strings.Split(tagName, ",")
 			column := attr[0]
 			if _, ok := tagList[column]; ok {
-				return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, tagName)
+				//TODO
+				// return nil, fmt.Errorf("%s:%s is exists", kdb.structTag, tagName)
+				return nil, fmt.Errorf("%s:%s is exists", "json", tagName)
 			}
 			//字段对应结构体成员地址
 			tagList[column] = v

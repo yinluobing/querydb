@@ -1,8 +1,9 @@
 package querydb
+
 import (
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 	"errors"
+	_ "github.com/go-sql-driver/mysql"
 	"reflect"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 type Builder struct {
 	table      string
-	conn       *Connection
+	conn       *QueryDb
 	grammar    *Grammar
 	distinct   bool
 	bindings   map[string][]interface{}
@@ -62,7 +63,7 @@ type union struct {
 	all   bool
 }
 
-func newBuilder(conn *Connection, grammar *Grammar) *Builder {
+func newBuilder(conn *QueryDb, grammar *Grammar) *Builder {
 	b := new(Builder)
 	b.conn = conn
 	b.grammar = grammar
@@ -372,7 +373,7 @@ func (b *Builder) aggregate(function string, column string) (string, error) {
 	delete(b.bindings, "select")
 
 	b.setAggregate(function, column)
-	result, err := b.Get(column).ToMap()
+	result, err := b.Rows(column).ToMap()
 	if err != nil {
 		return "", err
 	}
@@ -398,14 +399,14 @@ func (b *Builder) setAggregate(function string, column string) *Builder {
 	return b
 }
 
-func (b *Builder) First(columns ...string) *Row {
-	rs := b.Get(columns...)
+func (b *Builder) Row(columns ...string) *Row {
+	rs := b.Rows(columns...)
 	r := new(Row)
 	r.rs = rs
 	return r
 }
 
-func (b *Builder) Get(columns ...string) *Rows {
+func (b *Builder) Rows(columns ...string) *Rows {
 	if len(columns) > 0 {
 		b.Select(columns...)
 	}
@@ -528,13 +529,13 @@ func (b *Builder) getInsertMap(data interface{}) (columns []string, values map[s
 				}
 			}
 
-			tag := stValue.Type().Field(i).Tag.Get(kdb.structTag)
-			attrList := strings.Split(tag, ";")
+			tag := stValue.Type().Field(i).Tag.Get("json")
+			attrList := strings.Split(tag, ",")
 			ignore = false
 
-			if len(attrList) > 1 {
+			if len(attrList) > 0 {
 				for _, attr := range attrList {
-					if attr == "auto" {
+					if attr == "-" {
 						ignore = true
 						break
 					}

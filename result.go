@@ -7,11 +7,13 @@ import (
 	"reflect"
 )
 
+// Row 获取记录
 type Row struct {
 	rs        *Rows
 	lastError error
 }
 
+//ToArray get Array
 func (r *Row) ToArray() (result []string, err error) {
 	items, err := r.rs.ToArray()
 	if err != nil {
@@ -21,6 +23,7 @@ func (r *Row) ToArray() (result []string, err error) {
 	return items[0], nil
 }
 
+//ToMap get Map
 func (r *Row) ToMap() (result map[string]string, err error) {
 	items, err := r.rs.ToMap()
 	if err != nil {
@@ -30,6 +33,7 @@ func (r *Row) ToMap() (result map[string]string, err error) {
 	return items[0], nil
 }
 
+//ToStruct get Struct
 func (r *Row) ToStruct(st interface{}) error {
 	//获取变量的类型
 	stType := reflect.TypeOf(st)
@@ -85,11 +89,13 @@ func (r *Row) ToStruct(st interface{}) error {
 	return nil
 }
 
+//Rows get data
 type Rows struct {
 	rs        *sql.Rows
 	lastError error
 }
 
+//ToArray get Array
 func (r *Rows) ToArray() (data [][]string, err error) {
 
 	if r.rs == nil {
@@ -145,6 +151,7 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 	return data, nil
 }
 
+//ToMap get Map
 func (r *Rows) ToMap() (data []map[string]string, err error) {
 	if r.rs == nil {
 		return nil, r.lastError
@@ -190,6 +197,7 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 	return data, nil
 }
 
+//ToStruct get Struct
 func (r *Rows) ToStruct(st interface{}) error {
 	//st->&[]user
 	//获取变量的类型,类型为指针

@@ -223,7 +223,8 @@ func (g *Grammar) compileUnions(b *Builder) string {
 }
 
 func (g *Grammar) wrapTable(table string) string {
-	return fmt.Sprintf("%s%s", kdb.tablePrefix, table)
+	return table
+	// return fmt.Sprintf("%s%s", tablePrefix, table)
 }
 
 func (g *Grammar) wrapColumn(columns ...string) string {
