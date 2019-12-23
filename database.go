@@ -1,7 +1,6 @@
 package querydb
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -36,28 +35,18 @@ type Sql struct {
 
 // QueryDb mysql 配置
 type QueryDb struct {
-	ctx context.Context
-	db  *sql.DB
+	// ctx context.Context
+	db *sql.DB
 	// config  *Config
 	lastsql Sql
 }
 
 //QueryTx
 type QueryTx struct {
-	ctx context.Context
-	tx  sql.Tx
+	// ctx context.Context
+	tx sql.Tx
 	// config  *Config
 	lastsql Sql
-}
-
-func (querydb *QueryDb) WithContext(ctx context.Context) *QueryDb {
-	querydb.ctx = ctx
-	return querydb
-}
-
-func (querytx *QueryTx) WithContext(ctx context.Context) *QueryTx {
-	querytx.ctx = ctx
-	return querytx
 }
 
 //NewQuery 生成一个新的查询构造器
@@ -71,7 +60,7 @@ func (querydb *QueryDb) Begin() (*QueryTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &QueryTx{tx: *tx, ctx: querydb.ctx}, nil
+	return &QueryTx{tx: *tx}, nil
 }
 
 //Exec 复用执行语句
@@ -82,7 +71,7 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	return querydb.db.ExecContext(querydb.ctx, query, args...)
+	return querydb.db.Exec(query, args...)
 }
 
 //Query 复用查询语句
@@ -93,7 +82,7 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	return querydb.db.QueryContext(querydb.ctx, query, args...)
+	return querydb.db.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句
@@ -125,7 +114,7 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	return querytx.tx.ExecContext(querytx.ctx, query, args...)
+	return querytx.tx.Exec(query, args...)
 }
 
 //Query 复用查询语句
@@ -136,7 +125,7 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	return querytx.tx.QueryContext(querytx.ctx, query, args...)
+	return querytx.tx.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句

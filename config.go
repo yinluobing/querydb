@@ -1,10 +1,10 @@
 package querydb
 
 import (
-	"context"
 	"database/sql"
 	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -38,6 +38,7 @@ func (config *Config) SetSlave(c *Config) *Config {
 type Configs struct {
 	cfg         map[string]*Config
 	connections map[string]*QueryDb
+	sync.RWMutex
 }
 
 //Default ..
@@ -81,8 +82,15 @@ func (configs *Configs) Write(name string) *QueryDb {
 	}
 	//获取主
 	db := connect(config)
-	configs.connections[name] = &QueryDb{db: db, ctx: context.Background()}
-	return configs.connections[name]
+
+	configs.Lock()
+	configs.connections[name] = &QueryDb{db: db}
+	configs.Unlock()
+
+	configs.RLock()
+	v := configs.connections[name]
+	configs.RUnlock()
+	return v
 }
 
 func (configs *Configs) Read(name string) *QueryDb {
@@ -99,10 +107,15 @@ func (configs *Configs) Read(name string) *QueryDb {
 		keyname += "_read_" + strconv.Itoa(readnum)
 		config = configs.cfg[name].Slave[readnum]
 	}
-	//获取主
 	db := connect(config)
-	configs.connections[keyname] = &QueryDb{db: db, ctx: context.Background()}
-	return configs.connections[keyname]
+	configs.Lock()
+	configs.connections[keyname] = &QueryDb{db: db}
+	configs.Unlock()
+
+	configs.RLock()
+	v := configs.connections[keyname]
+	configs.RUnlock()
+	return v
 }
 
 //connect 数据库连接
@@ -112,14 +125,11 @@ func connect(config *Config) *sql.DB {
 	if err != nil {
 		logrus.Fatal("DB连接错误！")
 	}
-	if config.MaxOpenConns > 0 {
-		db.SetMaxOpenConns(config.MaxOpenConns)
+	if err = db.Ping(); err != nil {
+		logrus.Fatal(err.Error())
 	}
-	if config.MaxIdleConns > 0 {
-		db.SetMaxIdleConns(config.MaxIdleConns)
-	}
-	if config.MaxLifetime > 0 {
-		db.SetConnMaxLifetime(config.MaxLifetime)
-	}
+	db.SetMaxOpenConns(config.MaxOpenConns)
+	db.SetMaxIdleConns(config.MaxIdleConns)
+	db.SetConnMaxLifetime(config.MaxLifetime)
 	return db
 }
