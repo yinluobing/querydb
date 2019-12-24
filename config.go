@@ -8,7 +8,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/sirupsen/logrus"
 )
 
 //Config 数据库配置
@@ -78,7 +77,7 @@ func random(max int) int {
 func (configs *Configs) Write(name string) *QueryDb {
 	config, ok := configs.cfg[name]
 	if !ok {
-		logrus.Fatal("DB配置:" + name + "找不到！")
+		Log.Fatal("DB配置:" + name + "找不到！")
 	}
 	//获取主
 	db := connect(config)
@@ -96,7 +95,7 @@ func (configs *Configs) Write(name string) *QueryDb {
 func (configs *Configs) Read(name string) *QueryDb {
 	config, ok := configs.cfg[name]
 	if !ok {
-		logrus.Fatal("DB配置:" + name + "找不到！")
+		Log.Fatal("DB配置:" + name + "找不到！")
 	}
 	keyname := name
 	readlen := len(config.Slave)
@@ -123,10 +122,10 @@ func connect(config *Config) *sql.DB {
 	//数据库连接
 	db, err := sql.Open("mysql", config.URI())
 	if err != nil {
-		logrus.Fatal("DB连接错误！")
+		Log.Fatal(err.Error())
 	}
 	if err = db.Ping(); err != nil {
-		logrus.Fatal(err.Error())
+		Log.Fatal(err.Error())
 	}
 	db.SetMaxOpenConns(config.MaxOpenConns)
 	db.SetMaxIdleConns(config.MaxIdleConns)

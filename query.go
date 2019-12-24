@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -498,7 +496,7 @@ func (query *QueryBuilder) Insert(data interface{}) (int64, error) {
 	result, err := query.connection.Exec(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return 0, err
 	}
 	return result.LastInsertId()
@@ -539,7 +537,7 @@ func (query *QueryBuilder) Update(data interface{}) (int64, error) {
 	result, err := query.connection.Exec(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -570,7 +568,7 @@ func (query *QueryBuilder) Delete() (int64, error) {
 	result, err := query.connection.Exec(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -589,7 +587,7 @@ func (query *QueryBuilder) Exec(sql string, args ...interface{}) (int64, error) 
 	result, err := query.connection.Exec(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -605,7 +603,7 @@ func (query *QueryBuilder) QueryRows(sql string, args ...interface{}) *Rows {
 	rows, err := query.connection.Query(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return &Rows{rs: nil, lastError: err}
 	}
 	return &Rows{rs: rows, lastError: err}
@@ -659,7 +657,7 @@ func (query *QueryBuilder) Rows() *Rows {
 	rows, err := query.connection.Query(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		logrus.Println(err.Error())
+		Log.Info(err.Error())
 		return &Rows{rs: nil, lastError: err}
 	}
 	return &Rows{rs: rows, lastError: err}
