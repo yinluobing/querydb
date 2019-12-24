@@ -2,7 +2,7 @@ package querydb
 
 var Log Logger
 
-func SetLogger(logger Logger) {
+func (configs *Configs) SetLogger(logger Logger) {
 	Log = logger
 }
 
