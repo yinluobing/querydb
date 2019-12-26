@@ -75,6 +75,11 @@ func random(max int) int {
 
 //Write 获取一个
 func (configs *Configs) Write(name string) *QueryDb {
+
+	conn, ok := configs.connections[name]
+	if ok {
+		return conn
+	}
 	config, ok := configs.cfg[name]
 	if !ok {
 		Log.Fatal("DB配置:" + name + "找不到！")
@@ -106,6 +111,12 @@ func (configs *Configs) Read(name string) *QueryDb {
 		keyname += "_read_" + strconv.Itoa(readnum)
 		config = configs.cfg[name].Slave[readnum]
 	}
+
+	conn, ok := configs.connections[keyname]
+	if ok {
+		return conn
+	}
+
 	db := connect(config)
 	configs.Lock()
 	configs.connections[keyname] = &QueryDb{db: db}
