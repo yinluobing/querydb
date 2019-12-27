@@ -2,9 +2,11 @@ package querydb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"reflect"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // Row 获取记录
@@ -20,7 +22,10 @@ func (r *Row) ToArray() (result []string, err error) {
 		r.lastError = err
 		return nil, err
 	}
-	return items[0], nil
+	if len(items) > 0 {
+		return items[0], nil
+	}
+	return nil, errors.New("not data")
 }
 
 //ToMap get Map
@@ -30,7 +35,10 @@ func (r *Row) ToMap() (result map[string]string, err error) {
 		r.lastError = err
 		return nil, err
 	}
-	return items[0], nil
+	if len(items) > 0 {
+		return items[0], nil
+	}
+	return nil, errors.New("not data")
 }
 
 //ToStruct get Struct
