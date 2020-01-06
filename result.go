@@ -177,8 +177,6 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 	data = make([]map[string]string, 0)
 	num := len(fields)
 
-	result := make(map[string]string)
-
 	refs := make([]interface{}, num)
 
 	for i := 0; i < num; i++ {
@@ -187,6 +185,7 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 	}
 
 	for r.rs.Next() {
+		result := make(map[string]string)
 		if err := r.rs.Scan(refs...); err != nil {
 			return nil, err
 		}
