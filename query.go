@@ -2,7 +2,9 @@ package querydb
 
 import (
 	"database/sql"
+	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -355,7 +357,6 @@ func (query *QueryBuilder) beforeArg(value ...interface{}) {
 
 func (query *QueryBuilder) setData(datas ...map[string]interface{}) {
 	query.datas = datas
-
 }
 
 func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values map[string][]interface{}, err error) {
@@ -480,6 +481,209 @@ func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values 
 	return
 }
 
+//MultiInsert 批量插入
+func (query *QueryBuilder) MultiInsert(datas ...interface{}) (int64, error) {
+
+	stVal := reflect.ValueOf(datas)
+	if stVal.Kind() != reflect.Slice {
+		return 0, errors.New("data is not []interface{} type")
+	}
+	n := stVal.Len()
+	if n > 0 {
+		columns, values, err := query.getInsertMap(datas)
+		if err != nil {
+			return 0, err
+		}
+		bindingsArr := make([]map[string]interface{}, n)
+		for i := 0; i < n; i++ {
+			bindings := make(map[string]interface{}, 0)
+			for _, column := range columns {
+				bindings[column] = values[column][i]
+			}
+			bindingsArr[i] = bindings
+		}
+		query.setData(bindingsArr...)
+		grammar := Grammar{builder: query}
+		sql := grammar.Insert()
+		if len(query.columns) < 1 {
+			return 0, errors.New("insert data cannot be empty")
+		}
+		result, err := query.connection.Exec(sql, query.args...)
+		if err != nil {
+			err = NewDBError(err.Error(), query.connection.GetLastSql())
+			Log.Info(err.Error())
+			return 0, err
+		}
+		return result.RowsAffected()
+	}
+	return 0, errors.New("insert data cannot be empty")
+
+}
+
+//MultiInsertSQL 批量插入
+func (query *QueryBuilder) MultiInsertSQL(datas ...interface{}) string {
+	stVal := reflect.ValueOf(datas)
+	if stVal.Kind() != reflect.Slice {
+		return ""
+	}
+	n := stVal.Len()
+	if n > 0 {
+		columns, values, err := query.getInsertMap(datas)
+		if err != nil {
+			return ""
+		}
+		bindingsArr := make([]map[string]interface{}, n)
+		for i := 0; i < n; i++ {
+			bindings := make(map[string]interface{}, 0)
+			for _, column := range columns {
+				bindings[column] = values[column][i]
+			}
+			bindingsArr[i] = bindings
+		}
+		query.setData(bindingsArr...)
+		grammar := Grammar{builder: query}
+		sql := grammar.Insert()
+		if len(query.columns) < 1 {
+			return ""
+		}
+		query.connection.LastSql(sql, query.args...)
+		return query.connection.GetLastSql().ToString()
+	}
+	return ""
+}
+
+//Replace 替换
+func (query *QueryBuilder) Replace(datas ...interface{}) (int64, error) {
+
+	stVal := reflect.ValueOf(datas)
+	if stVal.Kind() != reflect.Slice {
+		return 0, errors.New("data is not []interface{} type")
+	}
+	n := stVal.Len()
+	if n > 0 {
+		columns, values, err := query.getInsertMap(datas)
+		if err != nil {
+			return 0, err
+		}
+		bindingsArr := make([]map[string]interface{}, n)
+		for i := 0; i < n; i++ {
+			bindings := make(map[string]interface{}, 0)
+			for _, column := range columns {
+				bindings[column] = values[column][i]
+			}
+			bindingsArr[i] = bindings
+		}
+		query.setData(bindingsArr...)
+		grammar := Grammar{builder: query}
+		sql := grammar.Replace()
+		if len(query.columns) < 1 {
+			return 0, errors.New("insert data cannot be empty")
+		}
+		result, err := query.connection.Exec(sql, query.args...)
+		if err != nil {
+			err = NewDBError(err.Error(), query.connection.GetLastSql())
+			Log.Info(err.Error())
+			return 0, err
+		}
+		return result.RowsAffected()
+	}
+	return 0, errors.New("insert data cannot be empty")
+}
+
+//ReplaceSQL 替换
+func (query *QueryBuilder) ReplaceSQL(datas ...interface{}) string {
+
+	stVal := reflect.ValueOf(datas)
+	if stVal.Kind() != reflect.Slice {
+		return ""
+	}
+	n := stVal.Len()
+	if n > 0 {
+		columns, values, err := query.getInsertMap(datas)
+		if err != nil {
+			return ""
+		}
+		bindingsArr := make([]map[string]interface{}, n)
+		for i := 0; i < n; i++ {
+			bindings := make(map[string]interface{}, 0)
+			for _, column := range columns {
+				bindings[column] = values[column][i]
+			}
+			bindingsArr[i] = bindings
+		}
+		query.setData(bindingsArr...)
+		grammar := Grammar{builder: query}
+		sql := grammar.Replace()
+		if len(query.columns) < 1 {
+			return ""
+		}
+		query.connection.LastSql(sql, query.args...)
+		return query.connection.GetLastSql().ToString()
+	}
+	return ""
+}
+
+//InsertUpdate
+func (query *QueryBuilder) InsertUpdate(insert interface{}, update interface{}) (int64, error) {
+
+	columns, values, err := query.getInsertMap(insert)
+	if err != nil {
+		return 0, err
+	}
+	bindingsInsert := map[string]interface{}{}
+	for _, column := range columns {
+		bindingsInsert[column] = values[column][0]
+	}
+
+	columnsup, valuesup, errup := query.getInsertMap(update)
+	if errup != nil {
+		return 0, errup
+	}
+	bindingsUpdate := map[string]interface{}{}
+	for _, column := range columnsup {
+		bindingsUpdate[column] = valuesup[column][0]
+	}
+
+	query.setData(bindingsInsert, bindingsUpdate)
+	grammar := Grammar{builder: query}
+	sql := grammar.InsertUpdate()
+	result, err := query.connection.Exec(sql, query.args...)
+	if err != nil {
+		err = NewDBError(err.Error(), query.connection.GetLastSql())
+		Log.Info(err.Error())
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+//InsertUpdate
+func (query *QueryBuilder) InsertUpdateSQL(insert interface{}, update interface{}) string {
+
+	columns, values, err := query.getInsertMap(insert)
+	if err != nil {
+		return err.Error()
+	}
+	bindingsInsert := map[string]interface{}{}
+	for _, column := range columns {
+		bindingsInsert[column] = values[column][0]
+	}
+
+	columnsup, valuesup, errup := query.getInsertMap(update)
+	if errup != nil {
+		return errup.Error()
+	}
+	bindingsUpdate := map[string]interface{}{}
+	for _, column := range columnsup {
+		bindingsUpdate[column] = valuesup[column][0]
+	}
+
+	query.setData(bindingsInsert, bindingsUpdate)
+	grammar := Grammar{builder: query}
+	sql := grammar.InsertUpdate()
+	query.connection.LastSql(sql, query.args...)
+	return query.connection.GetLastSql().ToString()
+}
+
 //Insert 插入数据
 func (query *QueryBuilder) Insert(data interface{}) (int64, error) {
 	columns, values, err := query.getInsertMap(data)
@@ -580,6 +784,20 @@ func (query *QueryBuilder) DeleteSQL() string {
 	sql := grammar.Delete()
 	query.connection.LastSql(sql, query.args...)
 	return query.connection.GetLastSql().ToString()
+}
+
+//Count
+func (query *QueryBuilder) Count() (int64, error) {
+	query.Select("COUNT(1) AS _C")
+	d, err := query.Row().ToMap()
+	if err != nil || d == nil {
+		return 0, err
+	}
+	if len(d) < 1 {
+		return 0, nil
+	}
+	v := d["_C"]
+	return strconv.ParseInt(v, 10, 0)
 }
 
 //Exec 原始SQl语句执行
