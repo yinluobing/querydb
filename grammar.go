@@ -164,11 +164,19 @@ func (g Grammar) Replace() string {
 func (g Grammar) compileInsertValue() string {
 	sql := " ("
 	for k, v := range g.builder.datas {
-		for kv, vv := range v {
+		for kv, _ := range v {
 			if k == 0 { //取第一列
 				g.builder.columns = append(g.builder.columns, kv)
 			}
-			g.builder.addArg(vv)
+		}
+	}
+	columns := g.builder.columns
+	columnsLen := len(g.builder.columns)
+	for index := 0; index < len(g.builder.datas); index++ {
+		d := g.builder.datas[index]
+		for i := 0; i < columnsLen; i++ {
+			field := columns[i]
+			g.builder.addArg(d[field])
 		}
 	}
 	sql += strings.Join(g.builder.columns, ",")
