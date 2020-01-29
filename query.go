@@ -22,6 +22,7 @@ const (
 	NOTEQUAL   = "!="
 	LIKE       = "LIKE"
 	JOIN       = "JOIN"
+	INNERJOIN  = "INNER JOIN"
 	LEFTJOIN   = "LEFT JOIN"
 	RIGHTJOIN  = "RIGHT JOIN"
 	UNION      = "UNION"
@@ -239,6 +240,11 @@ func (query *QueryBuilder) OrLike(column string, value interface{}) *QueryBuilde
 //Join .
 func (query *QueryBuilder) Join(tablename string, on string) *QueryBuilder {
 	query.joins = append(query.joins, join{table: tablename, on: on, operator: JOIN})
+	return query
+}
+
+func (query *QueryBuilder) InnerJoin(tablename string, on string) *QueryBuilder {
+	query.joins = append(query.joins, join{table: tablename, on: on, operator: INNERJOIN})
 	return query
 }
 
