@@ -3,6 +3,7 @@ package querydb
 import (
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 //Grammar sql 语法
@@ -54,7 +55,7 @@ func (g Grammar) compileLimit(isunion bool) string {
 		offset = g.builder.offset
 	}
 	if limit > 0 {
-		return " LIMIT " + strconv.Itoa(offset) + "," + strconv.Itoa(limit)
+		return " LIMIT " + strconv.FormatInt(offset, 10) + "," + strconv.FormatInt(limit, 10)
 	} else {
 		return ""
 	}
@@ -83,7 +84,9 @@ func (g Grammar) compileWhere() string {
 			case BETWEEN, NOTBETWEEN:
 				sql += " " + w[i].operator + " ? AND ?"
 			case IN, NOTIN:
-				sql += " " + w[i].operator + "(?" + strings.Repeat(",?", w[i].valuenum-1) + ")"
+				int64_num := w[i].valuenum - 1
+				int_num := *(*int)(unsafe.Pointer(&int64_num))
+				sql += " " + w[i].operator + "(?" + strings.Repeat(",?", int_num) + ")"
 			case ISNULL, ISNOTNULL:
 				sql += " " + w[i].operator
 				break
@@ -196,7 +199,7 @@ func (g Grammar) Delete() string {
 	sql += g.compileWhere()
 	sql += g.compileOrder(false)
 	if g.builder.limit > 0 {
-		sql += " LIMIT " + strconv.Itoa(g.builder.limit)
+		sql += " LIMIT " + strconv.FormatInt(g.builder.limit, 10)
 	}
 	return sql
 }
@@ -224,7 +227,7 @@ func (g Grammar) Update() string {
 	sql += g.compileWhere()
 	sql += g.compileOrder(false)
 	if g.builder.limit > 0 {
-		sql += " LIMIT " + strconv.Itoa(g.builder.limit)
+		sql += " LIMIT " + strconv.FormatInt(g.builder.limit, 10)
 	}
 	return sql
 }

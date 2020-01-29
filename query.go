@@ -39,14 +39,14 @@ type QueryBuilder struct {
 	where      []w
 	orders     []string
 	groups     []string
-	limit      int
-	offset     int
+	limit      int64
+	offset     int64
 	distinct   bool
 	binds      []string
 	joins      []join
 	unions     []union
-	unlimmit   int
-	unoffset   int
+	unlimmit   int64
+	unoffset   int64
 	unorders   []string
 
 	args      []interface{}
@@ -65,7 +65,7 @@ type union struct {
 type w struct {
 	column   string
 	operator string
-	valuenum int
+	valuenum int64
 	do       string
 }
 
@@ -173,28 +173,28 @@ func (query *QueryBuilder) NotOrBetween(column string, value1 interface{}, value
 
 // In 构造 in语句
 func (query *QueryBuilder) In(column string, value ...interface{}) *QueryBuilder {
-	query.toWhere(column, IN, len(value), AND)
+	query.toWhere(column, IN, int64(len(value)), AND)
 	query.addArg(value...)
 	return query
 }
 
 // OrIn orin语句
 func (query *QueryBuilder) OrIn(column string, value ...interface{}) *QueryBuilder {
-	query.toWhere(column, IN, len(value), OR)
+	query.toWhere(column, IN, int64(len(value)), OR)
 	query.addArg(value...)
 	return query
 }
 
 //NotIn .
 func (query *QueryBuilder) NotIn(column string, value ...interface{}) *QueryBuilder {
-	query.toWhere(column, NOTIN, len(value), AND)
+	query.toWhere(column, NOTIN, int64(len(value)), AND)
 	query.addArg(value...)
 	return query
 }
 
 //OrNotIn .
 func (query *QueryBuilder) OrNotIn(column string, value ...interface{}) *QueryBuilder {
-	query.toWhere(column, NOTIN, len(value), OR)
+	query.toWhere(column, NOTIN, int64(len(value)), OR)
 	query.addArg(value...)
 	return query
 }
@@ -270,13 +270,13 @@ func (query *QueryBuilder) Union(unions ...QueryBuilder) *QueryBuilder {
 }
 
 //UnionOffset .
-func (query *QueryBuilder) UnionOffset(offset int) *QueryBuilder {
+func (query *QueryBuilder) UnionOffset(offset int64) *QueryBuilder {
 	query.unoffset = offset
 	return query
 }
 
 //UnionLimit .
-func (query *QueryBuilder) UnionLimit(limit int) *QueryBuilder {
+func (query *QueryBuilder) UnionLimit(limit int64) *QueryBuilder {
 	query.unlimmit = limit
 	return query
 }
@@ -325,19 +325,19 @@ func (query *QueryBuilder) OrderBy(column string, direction string) *QueryBuilde
 }
 
 //Offset .
-func (query *QueryBuilder) Offset(offset int) *QueryBuilder {
+func (query *QueryBuilder) Offset(offset int64) *QueryBuilder {
 	query.offset = offset
 	return query
 }
 
 //Skip .
-func (query *QueryBuilder) Skip(offset int) *QueryBuilder {
+func (query *QueryBuilder) Skip(offset int64) *QueryBuilder {
 	query.offset = offset
 	return query
 }
 
 //Limit .
-func (query *QueryBuilder) Limit(limit int) *QueryBuilder {
+func (query *QueryBuilder) Limit(limit int64) *QueryBuilder {
 	query.limit = limit
 	return query
 }
@@ -347,7 +347,7 @@ func (query *QueryBuilder) ToSql(method string) string {
 	grammar := Grammar{builder: query, method: method}
 	return grammar.ToSql()
 }
-func (query *QueryBuilder) toWhere(column string, operator string, valuenum int, do string) *QueryBuilder {
+func (query *QueryBuilder) toWhere(column string, operator string, valuenum int64, do string) *QueryBuilder {
 	query.where = append(
 		query.where,
 		w{column: column, operator: operator, valuenum: valuenum, do: do})
