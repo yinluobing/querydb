@@ -41,7 +41,7 @@ func (r *Row) ToMap() (result map[string]string, err error) {
 	return nil, errors.New("not data")
 }
 
-func (r *Row) ToInterface() (result map[interface{}]interface{}, err error) {
+func (r *Row) ToInterface() (result map[string]interface{}, err error) {
 	items, err := r.rs.ToInterface()
 
 	if err != nil {
@@ -174,7 +174,7 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 }
 
 //[]map[interface{}]interface{}
-func (r *Rows) ToInterface() (data []map[interface{}]interface{}, err error) {
+func (r *Rows) ToInterface() (data []map[string]interface{}, err error) {
 	if r.rs == nil {
 		return nil, r.lastError
 	}
@@ -187,7 +187,7 @@ func (r *Rows) ToInterface() (data []map[interface{}]interface{}, err error) {
 		r.lastError = err
 		return nil, err
 	}
-	data = make([]map[interface{}]interface{}, 0)
+	data = make([]map[string]interface{}, 0)
 
 	num := len(fields)
 
@@ -198,13 +198,13 @@ func (r *Rows) ToInterface() (data []map[interface{}]interface{}, err error) {
 		refs[i] = &ref
 	}
 	for r.rs.Next() {
-		result := make(map[interface{}]interface{})
+		result := make(map[string]interface{})
 		if err := r.rs.Scan(refs...); err != nil {
 			return nil, err
 		}
 		for i, field := range fields {
 			if val, err := toString(refs[i]); err == nil {
-				result[interface{}(field)] = interface{}(val)
+				result[field] = interface{}(val)
 			} else {
 				return nil, err
 			}
