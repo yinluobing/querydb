@@ -41,6 +41,20 @@ func (r *Row) ToMap() (result map[string]string, err error) {
 	return nil, errors.New("not data")
 }
 
+func (r *Row) ToInterface() (result map[interface{}]interface{}, err error) {
+	items, err := r.rs.ToInterface()
+
+	if err != nil {
+		r.lastError = err
+		return nil, err
+	}
+
+	if len(items) > 0 {
+		return items[0], nil
+	}
+	return nil, errors.New("not data")
+}
+
 //ToStruct get Struct
 func (r *Row) ToStruct(st interface{}) error {
 	//获取变量的类型
@@ -157,6 +171,48 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 	}
 
 	return data, nil
+}
+
+//[]map[interface{}]interface{}
+func (r *Rows) ToInterface() (data []map[interface{}]interface{}, err error) {
+	if r.rs == nil {
+		return nil, r.lastError
+	}
+
+	defer r.rs.Close()
+
+	fields, err := r.rs.Columns()
+
+	if err != nil {
+		r.lastError = err
+		return nil, err
+	}
+	data = make([]map[interface{}]interface{}, 0)
+
+	num := len(fields)
+
+	refs := make([]interface{}, num)
+
+	for i := 0; i < num; i++ {
+		var ref interface{}
+		refs[i] = &ref
+	}
+	for r.rs.Next() {
+		result := make(map[interface{}]interface{})
+		if err := r.rs.Scan(refs...); err != nil {
+			return nil, err
+		}
+		for i, field := range fields {
+			if val, err := toString(refs[i]); err == nil {
+				result[interface{}(field)] = interface{}(val)
+			} else {
+				return nil, err
+			}
+		}
+		data = append(data, result)
+	}
+	return data, nil
+
 }
 
 //ToMap get Map
