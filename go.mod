@@ -1,8 +1,5 @@
 module github.com/pm-esd/querydb
 
-go 1.13
+go 1.14
 
-require (
-	github.com/go-sql-driver/mysql v1.4.1
-	google.golang.org/appengine v1.6.5 // indirect
-)
+require github.com/go-sql-driver/mysql v1.5.0
