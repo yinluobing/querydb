@@ -170,7 +170,7 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 		data = append(data, result)
 	}
 
-	if len(data) > 0 {
+	if len(data) < 1 {
 		return nil, errors.New("not data")
 	}
 
@@ -215,7 +215,7 @@ func (r *Rows) ToInterface() (data []map[string]interface{}, err error) {
 		}
 		data = append(data, result)
 	}
-	if len(data) > 0 {
+	if len(data) < 1 {
 		return nil, errors.New("not data")
 	}
 	return data, nil
@@ -264,7 +264,7 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 		data = append(data, result)
 
 	}
-	if len(data) > 0 {
+	if len(data) < 1 {
 		return nil, errors.New("not data")
 	}
 	return data, nil
