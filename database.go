@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pm-esd/tracing"
 )
 
 //Rows 行
@@ -40,6 +41,7 @@ type QueryDb struct {
 	db *sql.DB
 	// config  *Config
 	lastsql Sql
+	link    *Config
 }
 
 //QueryTx
@@ -48,6 +50,7 @@ type QueryTx struct {
 	tx *sql.Tx
 	// config  *Config
 	lastsql Sql
+	link    *Config
 }
 
 //NewQuery 生成一个新的查询构造器
@@ -72,9 +75,29 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
+	ctx := context.Background()
+	var res sql.Result
+	var err error
+	if Tracer {
+		sp, _ := tracing.SQLSpan(
+			ctx,
+			"ExecContext",
+			"mysql",
+			"sql",
+			querydb.link.Host+":"+querydb.link.Port+"/"+querydb.link.Database,
+			querydb.link.Username, querydb.lastsql.ToString())
 
-	return querydb.db.ExecContext(context.Background(), query, args...)
-	// return querydb.db.Exec(query, args...)
+		res, err = querydb.db.ExecContext(ctx, query, args...)
+		if err != nil {
+			tracing.SpanError(sp)
+		} else {
+			tracing.SpanSuccess(sp)
+		}
+	} else {
+		res, err = querydb.db.ExecContext(ctx, query, args...)
+	}
+
+	return res, err
 }
 
 //Query 复用查询语句
@@ -85,7 +108,32 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	return querydb.db.QueryContext(context.Background(), query, args...)
+
+	ctx := context.Background()
+	var res *sql.Rows
+	var err error
+	if Tracer {
+		sp, _ := tracing.SQLSpan(
+			ctx,
+			"QueryContext",
+			"mysql",
+			"sql",
+			querydb.link.Host+":"+querydb.link.Port+"/"+querydb.link.Database,
+			querydb.link.Username, querydb.lastsql.ToString())
+
+		res, err = querydb.db.QueryContext(ctx, query, args...)
+		if err != nil {
+			tracing.SpanError(sp)
+		} else {
+			tracing.SpanSuccess(sp)
+		}
+	} else {
+		res, err = querydb.db.QueryContext(ctx, query, args...)
+	}
+
+	return res, err
+
+	// return querydb.db.QueryContext(context.Background(), query, args...)
 	// return querydb.db.Query(query, args...)
 }
 
@@ -118,8 +166,29 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	// return querytx.tx.Exec(query, args...)
-	return querytx.tx.ExecContext(context.Background(), query, args...)
+	ctx := context.Background()
+	var res sql.Result
+	var err error
+	if Tracer {
+		sp, _ := tracing.SQLSpan(
+			ctx,
+			"ExecContext",
+			"mysql",
+			"sql",
+			querytx.link.Host+":"+querytx.link.Port+"/"+querytx.link.Database,
+			querytx.link.Username, querytx.lastsql.ToString())
+
+		res, err = querytx.tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			tracing.SpanError(sp)
+		} else {
+			tracing.SpanSuccess(sp)
+		}
+	} else {
+		res, err = querytx.tx.ExecContext(ctx, query, args...)
+	}
+	return res, err
+
 }
 
 //Query 复用查询语句
@@ -130,7 +199,32 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	return querytx.tx.QueryContext(context.Background(), query, args...)
+
+	ctx := context.Background()
+	var res *sql.Rows
+	var err error
+	if Tracer {
+		sp, _ := tracing.SQLSpan(
+			ctx,
+			"QueryContext",
+			"mysql",
+			"sql",
+			querytx.link.Host+":"+querytx.link.Port+"/"+querytx.link.Database,
+			querytx.link.Username, querytx.lastsql.ToString())
+
+		res, err = querytx.tx.QueryContext(ctx, query, args...)
+		if err != nil {
+			tracing.SpanError(sp)
+		} else {
+			tracing.SpanSuccess(sp)
+		}
+	} else {
+		res, err = querytx.tx.QueryContext(ctx, query, args...)
+	}
+
+	return res, err
+
+	// return querytx.tx.QueryContext(ctx, query, args...)
 	// return querytx.tx.Query(query, args...)
 }
 
@@ -153,66 +247,95 @@ func (querydb *QueryDb) LastSql(query string, args ...interface{}) {
 func (sqlRaw Sql) ToString() string {
 	s := sqlRaw.Sql
 	for _, v := range sqlRaw.Args {
-		switch reflect.ValueOf(v).Interface().(type) {
-		case sql.NullString:
-			v = sqlRaw.nullString(v.(sql.NullString))
-		case sql.NullInt64:
-			v = sqlRaw.nullInt64(v.(sql.NullInt64))
-		case sql.NullInt32:
-			v = sqlRaw.nullInt32(v.(sql.NullInt32))
-		case sql.NullFloat64:
-			v = sqlRaw.nullFloat64(v.(sql.NullFloat64))
-		case sql.NullBool:
-			v = sqlRaw.nullBool(v.(sql.NullBool))
-		case sql.NullTime:
-			v = sqlRaw.nullTime(v.(sql.NullTime))
+		if isNilFixed(v) {
+			v = "NULL"
+		} else {
+			switch reflect.ValueOf(v).Interface().(type) {
+			case sql.NullString:
+				v = sqlRaw.nullString(v.(sql.NullString))
+			case sql.NullInt64:
+				v = sqlRaw.nullInt64(v.(sql.NullInt64))
+			case sql.NullInt32:
+				v = sqlRaw.nullInt32(v.(sql.NullInt32))
+			case sql.NullFloat64:
+				v = sqlRaw.nullFloat64(v.(sql.NullFloat64))
+			case sql.NullBool:
+				v = sqlRaw.nullBool(v.(sql.NullBool))
+			case sql.NullTime:
+				v = sqlRaw.nullTime(v.(sql.NullTime))
+			}
 		}
-		val := fmt.Sprintf("%v", v)
-		val = strconv.Quote(val)
-		s = strings.Replace(s, "?", val, 1)
+		s = convert(s, v)
 	}
 	return s
 }
 
-func (sqlRaw Sql) nullTime(s sql.NullTime) time.Time {
-	if s.Valid {
-		return s.Time
+func isNilFixed(i interface{}) bool {
+	if i == nil {
+		return true
 	}
-	return time.Time{}
-}
-
-func (sqlRaw Sql) nullBool(s sql.NullBool) bool {
-	if s.Valid {
-		return s.Bool
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
 	}
 	return false
 }
 
-func (sqlRaw Sql) nullFloat64(s sql.NullFloat64) float64 {
+func convert(s string, v interface{}) string {
+	switch reflect.ValueOf(v).Interface().(type) {
+	case string:
+		if val := fmt.Sprintf("%v", v); val == "NULL" {
+			return strings.Replace(s, "?", fmt.Sprintf("%v", v), 1)
+		} else {
+			return strings.Replace(s, "?", strconv.Quote(fmt.Sprintf("%v", v)), 1)
+		}
+	}
+	return strings.Replace(s, "?", fmt.Sprintf("%v", v), 1)
+}
+
+func (sqlRaw Sql) nullTime(s sql.NullTime) interface{} {
+	if s.Valid {
+		return s.Time.Unix()
+	}
+	return "NULL"
+}
+
+func (sqlRaw Sql) nullBool(s sql.NullBool) interface{} {
+	if s.Valid {
+		if s.Bool {
+			return 1
+		} else {
+			return 0
+		}
+	}
+	return "NULL"
+}
+
+func (sqlRaw Sql) nullFloat64(s sql.NullFloat64) interface{} {
 	if s.Valid {
 		return s.Float64
 	}
-	return 0
+	return "NULL"
 }
 
-func (sqlRaw Sql) nullInt32(s sql.NullInt32) int32 {
+func (sqlRaw Sql) nullInt32(s sql.NullInt32) interface{} {
 	if s.Valid {
 		return s.Int32
 	}
-	return 0
+	return "NULL"
 }
 
-func (sqlRaw Sql) nullInt64(s sql.NullInt64) int64 {
+func (sqlRaw Sql) nullInt64(s sql.NullInt64) interface{} {
 	if s.Valid {
 		return s.Int64
 	}
-	return 0
+	return "NULL"
 }
-func (sqlRaw Sql) nullString(s sql.NullString) string {
+func (sqlRaw Sql) nullString(s sql.NullString) interface{} {
 	if s.Valid {
 		return s.String
 	}
-	return ""
+	return "NULL"
 }
 
 // ToJson sql语句转出json

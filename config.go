@@ -119,7 +119,7 @@ func (configs *Configs) Read(name string) *QueryDb {
 
 	db := connect(config)
 	configs.Lock()
-	configs.connections[keyname] = &QueryDb{db: db}
+	configs.connections[keyname] = &QueryDb{db: db, link: config}
 	configs.Unlock()
 
 	configs.RLock()
