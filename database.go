@@ -1,6 +1,7 @@
 package querydb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -71,7 +72,9 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	return querydb.db.Exec(query, args...)
+
+	return querydb.db.ExecContext(context.Background(), query, args...)
+	// return querydb.db.Exec(query, args...)
 }
 
 //Query 复用查询语句
@@ -82,7 +85,8 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	return querydb.db.Query(query, args...)
+	return querydb.db.QueryContext(context.Background(), query, args...)
+	// return querydb.db.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句
@@ -114,7 +118,8 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	return querytx.tx.Exec(query, args...)
+	// return querytx.tx.Exec(query, args...)
+	return querytx.tx.ExecContext(context.Background(), query, args...)
 }
 
 //Query 复用查询语句
@@ -125,7 +130,8 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	return querytx.tx.Query(query, args...)
+	return querytx.tx.QueryContext(context.Background(), query, args...)
+	// return querytx.tx.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句
@@ -150,8 +156,16 @@ func (sqlRaw Sql) ToString() string {
 		switch reflect.ValueOf(v).Interface().(type) {
 		case sql.NullString:
 			v = sqlRaw.nullString(v.(sql.NullString))
-			// case sql.NullTime:
-			// 	v = sqlRaw.nullTime(v.(sql.NullTime))
+		case sql.NullInt64:
+			v = sqlRaw.nullInt64(v.(sql.NullInt64))
+		case sql.NullInt32:
+			v = sqlRaw.nullInt32(v.(sql.NullInt32))
+		case sql.NullFloat64:
+			v = sqlRaw.nullFloat64(v.(sql.NullFloat64))
+		case sql.NullBool:
+			v = sqlRaw.nullBool(v.(sql.NullBool))
+		case sql.NullTime:
+			v = sqlRaw.nullTime(v.(sql.NullTime))
 		}
 		val := fmt.Sprintf("%v", v)
 		val = strconv.Quote(val)
@@ -160,6 +174,40 @@ func (sqlRaw Sql) ToString() string {
 	return s
 }
 
+func (sqlRaw Sql) nullTime(s sql.NullTime) time.Time {
+	if s.Valid {
+		return s.Time
+	}
+	return time.Time{}
+}
+
+func (sqlRaw Sql) nullBool(s sql.NullBool) bool {
+	if s.Valid {
+		return s.Bool
+	}
+	return false
+}
+
+func (sqlRaw Sql) nullFloat64(s sql.NullFloat64) float64 {
+	if s.Valid {
+		return s.Float64
+	}
+	return 0
+}
+
+func (sqlRaw Sql) nullInt32(s sql.NullInt32) int32 {
+	if s.Valid {
+		return s.Int32
+	}
+	return 0
+}
+
+func (sqlRaw Sql) nullInt64(s sql.NullInt64) int64 {
+	if s.Valid {
+		return s.Int64
+	}
+	return 0
+}
 func (sqlRaw Sql) nullString(s sql.NullString) string {
 	if s.Valid {
 		return s.String
