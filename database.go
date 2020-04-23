@@ -89,9 +89,9 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 
 		res, err = querydb.db.ExecContext(ctx, query, args...)
 		if err != nil {
-			tracing.SpanError(sp)
+			defer tracing.SpanError(sp)
 		} else {
-			tracing.SpanSuccess(sp)
+			defer tracing.SpanSuccess(sp)
 		}
 	} else {
 		res, err = querydb.db.ExecContext(ctx, query, args...)
@@ -123,9 +123,9 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 
 		res, err = querydb.db.QueryContext(ctx, query, args...)
 		if err != nil {
-			tracing.SpanError(sp)
+			defer tracing.SpanError(sp)
 		} else {
-			tracing.SpanSuccess(sp)
+			defer tracing.SpanSuccess(sp)
 		}
 	} else {
 		res, err = querydb.db.QueryContext(ctx, query, args...)
@@ -180,9 +180,9 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 
 		res, err = querytx.tx.ExecContext(ctx, query, args...)
 		if err != nil {
-			tracing.SpanError(sp)
+			defer tracing.SpanError(sp)
 		} else {
-			tracing.SpanSuccess(sp)
+			defer tracing.SpanSuccess(sp)
 		}
 	} else {
 		res, err = querytx.tx.ExecContext(ctx, query, args...)
@@ -214,9 +214,9 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 
 		res, err = querytx.tx.QueryContext(ctx, query, args...)
 		if err != nil {
-			tracing.SpanError(sp)
+			defer tracing.SpanError(sp)
 		} else {
-			tracing.SpanSuccess(sp)
+			defer tracing.SpanSuccess(sp)
 		}
 	} else {
 		res, err = querytx.tx.QueryContext(ctx, query, args...)
