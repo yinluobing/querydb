@@ -10,7 +10,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pm-esd/tracing"
 )
 
 //Rows 行
@@ -78,25 +77,7 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	ctx := context.Background()
 	var res sql.Result
 	var err error
-	if Tracer {
-		sp, _ := tracing.SQLSpan(
-			ctx,
-			"ExecContext",
-			"mysql",
-			"sql",
-			querydb.link.Host+":"+querydb.link.Port+"/"+querydb.link.Database,
-			querydb.link.Username, querydb.lastsql.ToString())
-
-		res, err = querydb.db.ExecContext(ctx, query, args...)
-		if err != nil {
-			defer tracing.SpanError(sp)
-		} else {
-			defer tracing.SpanSuccess(sp)
-		}
-	} else {
-		res, err = querydb.db.ExecContext(ctx, query, args...)
-	}
-
+	res, err = querydb.db.ExecContext(ctx, query, args...)
 	return res, err
 }
 
@@ -108,33 +89,11 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-
 	ctx := context.Background()
 	var res *sql.Rows
 	var err error
-	if Tracer {
-		sp, _ := tracing.SQLSpan(
-			ctx,
-			"QueryContext",
-			"mysql",
-			"sql",
-			querydb.link.Host+":"+querydb.link.Port+"/"+querydb.link.Database,
-			querydb.link.Username, querydb.lastsql.ToString())
-
-		res, err = querydb.db.QueryContext(ctx, query, args...)
-		if err != nil {
-			defer tracing.SpanError(sp)
-		} else {
-			defer tracing.SpanSuccess(sp)
-		}
-	} else {
-		res, err = querydb.db.QueryContext(ctx, query, args...)
-	}
-
+	res, err = querydb.db.QueryContext(ctx, query, args...)
 	return res, err
-
-	// return querydb.db.QueryContext(context.Background(), query, args...)
-	// return querydb.db.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句
@@ -169,24 +128,7 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 	ctx := context.Background()
 	var res sql.Result
 	var err error
-	if Tracer {
-		sp, _ := tracing.SQLSpan(
-			ctx,
-			"ExecContext",
-			"mysql",
-			"sql",
-			querytx.link.Host+":"+querytx.link.Port+"/"+querytx.link.Database,
-			querytx.link.Username, querytx.lastsql.ToString())
-
-		res, err = querytx.tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			defer tracing.SpanError(sp)
-		} else {
-			defer tracing.SpanSuccess(sp)
-		}
-	} else {
-		res, err = querytx.tx.ExecContext(ctx, query, args...)
-	}
+	res, err = querytx.tx.ExecContext(ctx, query, args...)
 	return res, err
 
 }
@@ -199,33 +141,11 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-
 	ctx := context.Background()
 	var res *sql.Rows
 	var err error
-	if Tracer {
-		sp, _ := tracing.SQLSpan(
-			ctx,
-			"QueryContext",
-			"mysql",
-			"sql",
-			querytx.link.Host+":"+querytx.link.Port+"/"+querytx.link.Database,
-			querytx.link.Username, querytx.lastsql.ToString())
-
-		res, err = querytx.tx.QueryContext(ctx, query, args...)
-		if err != nil {
-			defer tracing.SpanError(sp)
-		} else {
-			defer tracing.SpanSuccess(sp)
-		}
-	} else {
-		res, err = querytx.tx.QueryContext(ctx, query, args...)
-	}
-
+	res, err = querytx.tx.QueryContext(ctx, query, args...)
 	return res, err
-
-	// return querytx.tx.QueryContext(ctx, query, args...)
-	// return querytx.tx.Query(query, args...)
 }
 
 //GetLastSql 获取sql语句

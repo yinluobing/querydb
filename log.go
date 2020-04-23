@@ -6,12 +6,6 @@ func (configs *Configs) SetLogger(logger Logger) {
 	Log = logger
 }
 
-var Tracer bool
-
-func (configs *Configs) Tracer(b bool) {
-	Tracer = b
-}
-
 type Logger interface {
 	Panic(args ...interface{})
 	Fatal(args ...interface{})
