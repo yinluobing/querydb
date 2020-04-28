@@ -852,6 +852,8 @@ func (query *QueryBuilder) QueryRow(sql string, args ...interface{}) *Row {
 
 //GetRow 获取一条记录
 func (query *QueryBuilder) Row() *Row {
+	query.offset = 0
+	query.limit = 1
 	rs := query.Rows()
 	r := new(Row)
 	r.rs = rs
