@@ -37,7 +37,7 @@ func (config *Config) SetSlave(c *Config) *Config {
 type Configs struct {
 	cfg         map[string]*Config
 	connections map[string]*QueryDb
-	sync.RWMutex
+	mu          sync.RWMutex
 }
 
 //Default ..
@@ -82,25 +82,25 @@ func (configs *Configs) Write(name string) *QueryDb {
 	}
 	config, ok := configs.cfg[name]
 	if !ok {
-		Log.Fatal("DB配置:" + name + "找不到！")
+		Log.Panic("DB配置:" + name + "找不到！")
 	}
 	//获取主
 	db := connect(config)
 
-	configs.Lock()
+	configs.mu.Lock()
 	configs.connections[name] = &QueryDb{db: db}
-	configs.Unlock()
+	configs.mu.Unlock()
 
-	configs.RLock()
+	configs.mu.RLock()
 	v := configs.connections[name]
-	configs.RUnlock()
+	configs.mu.RUnlock()
 	return v
 }
 
 func (configs *Configs) Read(name string) *QueryDb {
 	config, ok := configs.cfg[name]
 	if !ok {
-		Log.Fatal("DB配置:" + name + "找不到！")
+		Log.Panic("DB配置:" + name + "找不到！")
 	}
 	keyname := name
 	readlen := len(config.Slave)
@@ -118,13 +118,13 @@ func (configs *Configs) Read(name string) *QueryDb {
 	}
 
 	db := connect(config)
-	configs.Lock()
+	configs.mu.Lock()
 	configs.connections[keyname] = &QueryDb{db: db, link: config}
-	configs.Unlock()
+	configs.mu.Unlock()
 
-	configs.RLock()
+	configs.mu.RLock()
 	v := configs.connections[keyname]
-	configs.RUnlock()
+	configs.mu.RUnlock()
 	return v
 }
 
