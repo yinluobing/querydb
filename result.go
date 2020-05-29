@@ -25,7 +25,7 @@ func (r *Row) ToArray() (result []string, err error) {
 	if len(items) > 0 {
 		return items[0], nil
 	}
-	return nil, errors.New("not data")
+	return nil, errors.New("data is empty")
 }
 
 //ToMap get Map
@@ -38,7 +38,7 @@ func (r *Row) ToMap() (result map[string]string, err error) {
 	if len(items) > 0 {
 		return items[0], nil
 	}
-	return nil, errors.New("not data")
+	return nil, errors.New("data is empty")
 }
 
 func (r *Row) ToInterface() (result map[string]interface{}, err error) {
@@ -52,7 +52,7 @@ func (r *Row) ToInterface() (result map[string]interface{}, err error) {
 	if len(items) > 0 {
 		return items[0], nil
 	}
-	return nil, errors.New("not data")
+	return nil, errors.New("data is empty")
 }
 
 //ToStruct get Struct
@@ -171,7 +171,7 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 	}
 
 	if len(data) < 1 {
-		return nil, errors.New("not data")
+		return nil, errors.New("data is empty")
 	}
 
 	return data, nil
@@ -216,7 +216,7 @@ func (r *Rows) ToInterface() (data []map[string]interface{}, err error) {
 		data = append(data, result)
 	}
 	if len(data) < 1 {
-		return nil, errors.New("not data")
+		return nil, errors.New("data is empty")
 	}
 	return data, nil
 
@@ -265,7 +265,7 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 
 	}
 	if len(data) < 1 {
-		return nil, errors.New("not data")
+		return nil, errors.New("data is empty")
 	}
 	return data, nil
 }
