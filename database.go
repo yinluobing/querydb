@@ -80,7 +80,6 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 		ext.PeerService.Set(span, "mysql")
 		span.SetTag("query", query)
 		span.SetTag("param", args)
-		span.SetTag("time", querydb.lastsql.CostTime)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -106,7 +105,6 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 		ext.PeerService.Set(span, "mysql")
 		span.SetTag("query", query)
 		span.SetTag("param", args)
-		span.SetTag("time", querydb.lastsql.CostTime)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -153,7 +151,6 @@ func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interfac
 		ext.PeerService.Set(span, "mysql")
 		span.SetTag("query", query)
 		span.SetTag("param", args)
-		span.SetTag("time", querytx.lastsql.CostTime)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -179,7 +176,6 @@ func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interfa
 		ext.PeerService.Set(span, "mysql")
 		span.SetTag("query", query)
 		span.SetTag("param", args)
-		span.SetTag("time", querytx.lastsql.CostTime)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
