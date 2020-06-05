@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 )
 
 //Rows 行
@@ -70,7 +72,18 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	// ctx := context.Background()
+
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		parentCtx := parentSpan.Context()
+		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		ext.SpanKindRPCClient.Set(span)
+		ext.PeerService.Set(span, "mysql")
+		span.SetTag("sql.query", query)
+		span.SetTag("sql.param", args)
+		defer span.Finish()
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
+
 	var res sql.Result
 	var err error
 	res, err = querydb.db.ExecContext(ctx, query, args...)
@@ -85,7 +98,16 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	// ctx := context.Background()
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		parentCtx := parentSpan.Context()
+		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		ext.SpanKindRPCClient.Set(span)
+		ext.PeerService.Set(span, "mysql")
+		span.SetTag("sql.query", query)
+		span.SetTag("sql.param", args)
+		defer span.Finish()
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
 	var res *sql.Rows
 	var err error
 	res, err = querydb.db.QueryContext(ctx, query, args...)
@@ -121,7 +143,17 @@ func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interfac
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	// ctx := context.Background()
+
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		parentCtx := parentSpan.Context()
+		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		ext.SpanKindRPCClient.Set(span)
+		ext.PeerService.Set(span, "mysql")
+		span.SetTag("sql.query", query)
+		span.SetTag("sql.param", args)
+		defer span.Finish()
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
 	var res sql.Result
 	var err error
 	res, err = querytx.tx.ExecContext(ctx, query, args...)
@@ -137,7 +169,16 @@ func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interfa
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	// ctx := context.Background()
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		parentCtx := parentSpan.Context()
+		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		ext.SpanKindRPCClient.Set(span)
+		ext.PeerService.Set(span, "mysql")
+		span.SetTag("sql.query", query)
+		span.SetTag("sql.param", args)
+		defer span.Finish()
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
 	var res *sql.Rows
 	var err error
 	res, err = querytx.tx.QueryContext(ctx, query, args...)
