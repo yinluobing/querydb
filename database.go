@@ -20,9 +20,9 @@ import (
 
 // Connection 链接
 type Connection interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	NewQuery() *QueryBuilder
+	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	NewQuery(ctx context.Context) *QueryBuilder
 	GetLastSql() Sql
 	LastSql(query string, args ...interface{})
 }
@@ -36,25 +36,21 @@ type Sql struct {
 
 // QueryDb mysql 配置
 type QueryDb struct {
-	// ctx context.Context
-	db *sql.DB
-	// config  *Config
+	db      *sql.DB
 	lastsql Sql
 	link    *Config
 }
 
 //QueryTx
 type QueryTx struct {
-	// ctx context.Context
-	tx *sql.Tx
-	// config  *Config
+	tx      *sql.Tx
 	lastsql Sql
 	link    *Config
 }
 
 //NewQuery 生成一个新的查询构造器
-func (querydb *QueryDb) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querydb}
+func (querydb *QueryDb) NewQuery(ctx context.Context) *QueryBuilder {
+	return &QueryBuilder{connection: querydb, ctx: ctx}
 }
 
 //Begin 开启一个事务
@@ -67,14 +63,14 @@ func (querydb *QueryDb) Begin() (*QueryTx, error) {
 }
 
 //Exec 复用执行语句
-func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	querydb.lastsql.Sql = query
 	querydb.lastsql.Args = args
 	start := time.Now()
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	// ctx := context.Background()
 	var res sql.Result
 	var err error
 	res, err = querydb.db.ExecContext(ctx, query, args...)
@@ -82,14 +78,14 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 }
 
 //Query 复用查询语句
-func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	querydb.lastsql.Sql = query
 	querydb.lastsql.Args = args
 	start := time.Now()
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	// ctx := context.Background()
 	var res *sql.Rows
 	var err error
 	res, err = querydb.db.QueryContext(ctx, query, args...)
@@ -112,12 +108,12 @@ func (querytx *QueryTx) Rollback() error {
 }
 
 // NewQuery 生成一个新的查询构造器
-func (querytx *QueryTx) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querytx}
+func (querytx *QueryTx) NewQuery(ctx context.Context) *QueryBuilder {
+	return &QueryBuilder{connection: querytx, ctx: ctx}
 }
 
 //Exec 复用执行语句
-func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	querytx.lastsql.Sql = query
 	querytx.lastsql.Args = args
 	start := time.Now()
@@ -125,7 +121,7 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	ctx := context.Background()
+	// ctx := context.Background()
 	var res sql.Result
 	var err error
 	res, err = querytx.tx.ExecContext(ctx, query, args...)
@@ -134,14 +130,14 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 }
 
 //Query 复用查询语句
-func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	querytx.lastsql.Sql = query
 	querytx.lastsql.Args = args
 	start := time.Now()
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	// ctx := context.Background()
 	var res *sql.Rows
 	var err error
 	res, err = querytx.tx.QueryContext(ctx, query, args...)

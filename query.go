@@ -1,6 +1,7 @@
 package querydb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"reflect"
@@ -33,6 +34,7 @@ const (
 
 // QueryBuilder 查询构造器
 type QueryBuilder struct {
+	ctx        context.Context
 	connection Connection
 	table      []string
 	columns    []string
@@ -514,7 +516,7 @@ func (query *QueryBuilder) MultiInsert(datas ...interface{}) (int64, error) {
 		if len(query.columns) < 1 {
 			return 0, errors.New("insert data cannot be empty")
 		}
-		result, err := query.connection.Exec(sql, query.args...)
+		result, err := query.connection.Exec(query.ctx, sql, query.args...)
 		if err != nil {
 			err = NewDBError(err.Error(), query.connection.GetLastSql())
 			// Log.Info(err.Error())
@@ -585,7 +587,7 @@ func (query *QueryBuilder) Replace(datas ...interface{}) (int64, error) {
 		if len(query.columns) < 1 {
 			return 0, errors.New("insert data cannot be empty")
 		}
-		result, err := query.connection.Exec(sql, query.args...)
+		result, err := query.connection.Exec(query.ctx, sql, query.args...)
 		if err != nil {
 			err = NewDBError(err.Error(), query.connection.GetLastSql())
 			// Log.Info(err.Error())
@@ -653,7 +655,7 @@ func (query *QueryBuilder) InsertUpdate(insert interface{}, update interface{}) 
 	query.setData(bindingsInsert, bindingsUpdate)
 	grammar := Grammar{builder: query}
 	sql := grammar.InsertUpdate()
-	result, err := query.connection.Exec(sql, query.args...)
+	result, err := query.connection.Exec(query.ctx, sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -703,7 +705,7 @@ func (query *QueryBuilder) Insert(data interface{}) (int64, error) {
 	query.setData(bindings)
 	grammar := Grammar{builder: query}
 	sql := grammar.Insert()
-	result, err := query.connection.Exec(sql, query.args...)
+	result, err := query.connection.Exec(query.ctx, sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -744,7 +746,7 @@ func (query *QueryBuilder) Update(data interface{}) (int64, error) {
 	sql := grammar.Update()
 	args := append(query.whereArgs, query.args...)
 
-	result, err := query.connection.Exec(sql, args...)
+	result, err := query.connection.Exec(query.ctx, sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -775,7 +777,7 @@ func (query *QueryBuilder) UpdateSQL(data interface{}) string {
 func (query *QueryBuilder) Delete() (int64, error) {
 	grammar := Grammar{builder: query}
 	sql := grammar.Delete()
-	result, err := query.connection.Exec(sql, query.args...)
+	result, err := query.connection.Exec(query.ctx, sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -808,7 +810,7 @@ func (query *QueryBuilder) Count() (int64, error) {
 
 //Exec 原始SQl语句执行
 func (query *QueryBuilder) Exec(sql string, args ...interface{}) (int64, error) {
-	result, err := query.connection.Exec(sql, args...)
+	result, err := query.connection.Exec(query.ctx, sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -824,7 +826,7 @@ func (query *QueryBuilder) ExecSQL(sql string, args ...interface{}) string {
 }
 
 func (query *QueryBuilder) QueryRows(sql string, args ...interface{}) *Rows {
-	rows, err := query.connection.Query(sql, args...)
+	rows, err := query.connection.Query(query.ctx, sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
@@ -880,7 +882,7 @@ func (query *QueryBuilder) RowsSQL() string {
 func (query *QueryBuilder) Rows() *Rows {
 	grammar := Grammar{builder: query}
 	sql := grammar.Select()
-	rows, err := query.connection.Query(sql, query.args...)
+	rows, err := query.connection.Query(query.ctx, sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		// Log.Info(err.Error())
