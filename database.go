@@ -75,11 +75,11 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		parentCtx := parentSpan.Context()
-		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 		ext.SpanKindRPCClient.Set(span)
 		ext.PeerService.Set(span, "mysql")
-		span.SetTag("sql.query", query)
-		span.SetTag("sql.param", args)
+		span.SetTag("query", query)
+		span.SetTag("param", args)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -100,11 +100,11 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 	}()
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		parentCtx := parentSpan.Context()
-		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 		ext.SpanKindRPCClient.Set(span)
 		ext.PeerService.Set(span, "mysql")
-		span.SetTag("sql.query", query)
-		span.SetTag("sql.param", args)
+		span.SetTag("query", query)
+		span.SetTag("param", args)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -146,11 +146,11 @@ func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interfac
 
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		parentCtx := parentSpan.Context()
-		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 		ext.SpanKindRPCClient.Set(span)
 		ext.PeerService.Set(span, "mysql")
-		span.SetTag("sql.query", query)
-		span.SetTag("sql.param", args)
+		span.SetTag("query", query)
+		span.SetTag("param", args)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
@@ -171,11 +171,11 @@ func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interfa
 	}()
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		parentCtx := parentSpan.Context()
-		span := opentracing.StartSpan("db", opentracing.ChildOf(parentCtx))
+		span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 		ext.SpanKindRPCClient.Set(span)
 		ext.PeerService.Set(span, "mysql")
-		span.SetTag("sql.query", query)
-		span.SetTag("sql.param", args)
+		span.SetTag("query", query)
+		span.SetTag("param", args)
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
