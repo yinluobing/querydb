@@ -78,6 +78,7 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	var res sql.Result
 	var err error
 	res, err = querydb.db.ExecContext(ctx, query, args...)
+	querydb.db.Ping()
 	return res, err
 }
 
@@ -93,6 +94,7 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	var res *sql.Rows
 	var err error
 	res, err = querydb.db.QueryContext(ctx, query, args...)
+	querydb.db.Ping()
 	return res, err
 }
 

@@ -73,28 +73,46 @@ func random(max int) int {
 	return rand.Intn(max)
 }
 
+func (configs *Configs) GetClient(name string, config *Config) *QueryDb {
+	configs.mu.RLock()
+	value, exists := configs.connections[name]
+	if !exists {
+		value = configs.SetClient(name, config)
+	}
+	configs.mu.RUnlock()
+	return value
+}
+
+func (configs *Configs) SetClient(name string, config *Config) *QueryDb {
+
+	configs.mu.Lock()
+	configs.connections[name] = &QueryDb{db: connect(config), link: config}
+	configs.mu.Unlock()
+	return configs.connections[name]
+}
+
 //Write 获取一个
 func (configs *Configs) Write(name string) *QueryDb {
 
-	conn, ok := configs.connections[name]
-	if ok {
-		return conn
-	}
+	// conn, ok := configs.connections[name]
+	// if ok {
+	// 	return conn
+	// }
 	config, ok := configs.cfg[name]
 	if !ok {
 		Log.Panic("DB配置:" + name + "找不到！")
 	}
-	//获取主
-	db := connect(config)
+	// //获取主
+	// db := connect(config)
 
-	configs.mu.Lock()
-	configs.connections[name] = &QueryDb{db: db}
-	configs.mu.Unlock()
+	// configs.mu.Lock()
+	// configs.connections[name] = &QueryDb{db: db}
+	// configs.mu.Unlock()
 
-	configs.mu.RLock()
-	v := configs.connections[name]
-	configs.mu.RUnlock()
-	return v
+	// configs.mu.RLock()
+	// v := configs.connections[name]
+	// configs.mu.RUnlock()
+	return configs.GetClient(name, config)
 }
 
 func (configs *Configs) Read(name string) *QueryDb {
@@ -112,20 +130,20 @@ func (configs *Configs) Read(name string) *QueryDb {
 		config = configs.cfg[name].Slave[readnum]
 	}
 
-	conn, ok := configs.connections[keyname]
-	if ok {
-		return conn
-	}
+	// conn, ok := configs.connections[keyname]
+	// if ok {
+	// 	return conn
+	// }
 
-	db := connect(config)
-	configs.mu.Lock()
-	configs.connections[keyname] = &QueryDb{db: db, link: config}
-	configs.mu.Unlock()
+	// db := connect(config)
+	// configs.mu.Lock()
+	// configs.connections[keyname] = &QueryDb{db: db, link: config}
+	// configs.mu.Unlock()
 
-	configs.mu.RLock()
-	v := configs.connections[keyname]
-	configs.mu.RUnlock()
-	return v
+	// configs.mu.RLock()
+	// v := configs.connections[keyname]
+	// configs.mu.RUnlock()
+	return configs.GetClient(keyname, config)
 }
 
 //connect 数据库连接
