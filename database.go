@@ -52,6 +52,9 @@ type QueryTx struct {
 
 //NewQuery 生成一个新的查询构造器
 func (querydb *QueryDb) NewQuery(ctx context.Context) *QueryBuilder {
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	return &QueryBuilder{connection: querydb, ctx: ctx}
 }
 
@@ -73,10 +76,11 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
 
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	if trace {
-		if ctx == nil {
-			ctx = context.Background()
-		}
+
 		if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 			parentCtx := parentSpan.Context()
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
@@ -104,10 +108,12 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
+
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	if trace {
-		if ctx == nil {
-			ctx = context.Background()
-		}
+
 		if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 			parentCtx := parentSpan.Context()
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
@@ -143,6 +149,9 @@ func (querytx *QueryTx) Rollback() error {
 
 // NewQuery 生成一个新的查询构造器
 func (querytx *QueryTx) NewQuery(ctx context.Context) *QueryBuilder {
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	return &QueryBuilder{connection: querytx, ctx: ctx}
 }
 
@@ -156,10 +165,11 @@ func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interfac
 
 	}()
 
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
+
 	if trace {
-		if ctx == nil {
-			ctx = context.Background()
-		}
 
 		if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 			parentCtx := parentSpan.Context()
@@ -189,10 +199,12 @@ func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interfa
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
 
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
+
 	if trace {
-		if ctx == nil {
-			ctx = context.Background()
-		}
+
 		if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 			parentCtx := parentSpan.Context()
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
