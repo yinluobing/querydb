@@ -77,8 +77,15 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	ctx := context.Background()
 	var res sql.Result
 	var err error
-	res, err = querydb.db.ExecContext(ctx, query, args...)
-	querydb.db.Ping()
+
+	//添加预处理
+	stmt, err := querydb.db.PrepareContext(ctx, query)
+	if err != nil {
+		return res, err
+	}
+	res, err = stmt.ExecContext(ctx, args...)
+	// res, err = querydb.db.ExecContext(ctx, query, args...)
+	querydb.db.PingContext(ctx)
 	return res, err
 }
 
@@ -93,8 +100,15 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	ctx := context.Background()
 	var res *sql.Rows
 	var err error
-	res, err = querydb.db.QueryContext(ctx, query, args...)
-	querydb.db.Ping()
+
+	//添加预处理
+	stmt, err := querydb.db.PrepareContext(ctx, query)
+	if err != nil {
+		return res, err
+	}
+	res, err = stmt.QueryContext(ctx, args...)
+	// res, err = querydb.db.QueryContext(ctx, query, args...)
+	querydb.db.PingContext(ctx)
 	return res, err
 }
 
@@ -130,7 +144,13 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 	ctx := context.Background()
 	var res sql.Result
 	var err error
-	res, err = querytx.tx.ExecContext(ctx, query, args...)
+	//添加预处理
+	stmt, err := querytx.tx.PrepareContext(ctx, query)
+	if err != nil {
+		return res, err
+	}
+	res, err = stmt.ExecContext(ctx, args...)
+	// res, err = querytx.tx.ExecContext(ctx, query, args...)
 	return res, err
 
 }
@@ -146,7 +166,13 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	ctx := context.Background()
 	var res *sql.Rows
 	var err error
-	res, err = querytx.tx.QueryContext(ctx, query, args...)
+	//添加预处理
+	stmt, err := querytx.tx.PrepareContext(ctx, query)
+	if err != nil {
+		return res, err
+	}
+	res, err = stmt.QueryContext(ctx, args...)
+	// res, err = querytx.tx.QueryContext(ctx, query, args...)
 	return res, err
 }
 
