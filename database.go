@@ -74,13 +74,14 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	ctx := context.TODO()
 	var res sql.Result
 	var err error
 
 	//添加预处理
 	stmt, err := querydb.db.PrepareContext(ctx, query)
 	if err != nil {
+		querydb.db.PingContext(ctx)
 		return res, err
 	}
 	res, err = stmt.ExecContext(ctx, args...)
@@ -97,13 +98,14 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querydb.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	ctx := context.TODO()
 	var res *sql.Rows
 	var err error
 
 	//添加预处理
 	stmt, err := querydb.db.PrepareContext(ctx, query)
 	if err != nil {
+		querydb.db.PingContext(ctx)
 		return res, err
 	}
 	res, err = stmt.QueryContext(ctx, args...)
@@ -141,7 +143,7 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		querytx.lastsql.CostTime = time.Since(start)
 
 	}()
-	ctx := context.Background()
+	ctx := context.TODO()
 	var res sql.Result
 	var err error
 	//添加预处理
@@ -163,7 +165,7 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	defer func() {
 		querytx.lastsql.CostTime = time.Since(start)
 	}()
-	ctx := context.Background()
+	ctx := context.TODO()
 	var res *sql.Rows
 	var err error
 	//添加预处理
