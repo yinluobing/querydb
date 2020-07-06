@@ -99,6 +99,7 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 	//添加预处理
 	stmt, err := querydb.db.PrepareContext(ctx, query)
 	if err != nil {
+		querydb.db.PingContext(ctx)
 		return res, err
 	}
 	res, err = stmt.ExecContext(ctx, args...)
@@ -138,6 +139,7 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 	//添加预处理
 	stmt, err := querydb.db.PrepareContext(ctx, query)
 	if err != nil {
+		querydb.db.PingContext(ctx)
 		return res, err
 	}
 	res, err = stmt.QueryContext(ctx, args...)
