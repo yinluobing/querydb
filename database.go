@@ -12,6 +12,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 //Rows 行
@@ -86,8 +87,10 @@ func (querydb *QueryDb) Exec(ctx context.Context, query string, args ...interfac
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 			ext.SpanKindRPCClient.Set(span)
 			ext.PeerService.Set(span, "mysql")
-			span.SetTag("query", query)
-			span.SetTag("param", args)
+			// span.SetTag("query", query)
+			// span.SetTag("param", args)
+			span.LogFields(log.String("sql", query))
+			span.LogFields(log.Object("param", args))
 			defer span.Finish()
 			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
@@ -127,8 +130,10 @@ func (querydb *QueryDb) Query(ctx context.Context, query string, args ...interfa
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 			ext.SpanKindRPCClient.Set(span)
 			ext.PeerService.Set(span, "mysql")
-			span.SetTag("query", query)
-			span.SetTag("param", args)
+			// span.SetTag("query", query)
+			// span.SetTag("param", args)
+			span.LogFields(log.String("sql", query))
+			span.LogFields(log.Object("param", args))
 			defer span.Finish()
 			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
@@ -192,8 +197,10 @@ func (querytx *QueryTx) Exec(ctx context.Context, query string, args ...interfac
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 			ext.SpanKindRPCClient.Set(span)
 			ext.PeerService.Set(span, "mysql")
-			span.SetTag("query", query)
-			span.SetTag("param", args)
+			// span.SetTag("query", query)
+			// span.SetTag("param", args)
+			span.LogFields(log.String("sql", query))
+			span.LogFields(log.Object("param", args))
 			defer span.Finish()
 			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
@@ -233,8 +240,10 @@ func (querytx *QueryTx) Query(ctx context.Context, query string, args ...interfa
 			span := opentracing.StartSpan("mysql", opentracing.ChildOf(parentCtx))
 			ext.SpanKindRPCClient.Set(span)
 			ext.PeerService.Set(span, "mysql")
-			span.SetTag("query", query)
-			span.SetTag("param", args)
+			// span.SetTag("query", query)
+			// span.SetTag("param", args)
+			span.LogFields(log.String("sql", query))
+			span.LogFields(log.Object("param", args))
 			defer span.Finish()
 			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
