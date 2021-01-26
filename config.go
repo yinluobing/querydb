@@ -19,9 +19,11 @@ type Config struct {
 	Charset      string        //字符编码 utf8mb4
 	Database     string        //默认连接数据库
 	MaxLifetime  time.Duration //设置一个连接的最长生命周期，因为数据库本身对连接有一个超时时间的设置，如果超时时间到了数据库会单方面断掉连接，此时再用连接池内的连接进行访问就会出错, 因此这个值往往要小于数据库本身的连接超时时间
+	MaxIdleTime  time.Duration //设置连接的生命周期的最大
 	MaxIdleConns int           //设置闲置的连接数,连接池里面允许Idel的最大连接数, 这些Idel的连接 就是并发时可以同时获取的连接,也是用完后放回池里面的互用的连接, 从而提升性能
-	MaxOpenConns int           //设置最大打开的连接数，默认值为0表示不限制。控制应用于数据库建立连接的数量，避免过多连接压垮数据库。
-	Slave        []*Config     //从库
+
+	MaxOpenConns int       //设置最大打开的连接数，默认值为0表示不限制。控制应用于数据库建立连接的数量，避免过多连接压垮数据库。
+	Slave        []*Config //从库
 }
 
 //SetSlave 设置 Slave
@@ -141,5 +143,6 @@ func connect(config *Config) *sql.DB {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 	db.SetMaxIdleConns(config.MaxIdleConns)
 	db.SetConnMaxLifetime(config.MaxLifetime)
+	db.SetConnMaxIdleTime(config.MaxIdleTime)
 	return db
 }

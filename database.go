@@ -36,25 +36,21 @@ type Sql struct {
 
 // QueryDb mysql 配置
 type QueryDb struct {
-	// ctx context.Context
-	db *sql.DB
-	// config  *Config
+	db      *sql.DB
 	lastsql Sql
 	link    *Config
 }
 
 //QueryTx
 type QueryTx struct {
-	// ctx context.Context
-	tx *sql.Tx
-	// config  *Config
+	Tx      *sql.Tx
 	lastsql Sql
 	link    *Config
 }
 
 //NewQuery 生成一个新的查询构造器
 func (querydb *QueryDb) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querydb}
+	return &QueryBuilder{connection: querydb, transaction: false}
 }
 
 //Begin 开启一个事务
@@ -63,7 +59,7 @@ func (querydb *QueryDb) Begin() (*QueryTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &QueryTx{tx: tx}, nil
+	return &QueryTx{Tx: tx}, nil
 }
 
 //Exec 复用执行语句
@@ -121,17 +117,17 @@ func (querydb *QueryDb) GetLastSql() Sql {
 
 // Commit 事务提交
 func (querytx *QueryTx) Commit() error {
-	return querytx.tx.Commit()
+	return querytx.Tx.Commit()
 }
 
 // Rollback 事务回滚
 func (querytx *QueryTx) Rollback() error {
-	return querytx.tx.Rollback()
+	return querytx.Tx.Rollback()
 }
 
 // NewQuery 生成一个新的查询构造器
 func (querytx *QueryTx) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querytx}
+	return &QueryBuilder{connection: querytx, transaction: true}
 }
 
 //Exec 复用执行语句
@@ -147,7 +143,7 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 	var res sql.Result
 	var err error
 	//添加预处理
-	stmt, err := querytx.tx.PrepareContext(ctx, query)
+	stmt, err := querytx.Tx.PrepareContext(ctx, query)
 	if err != nil {
 		return res, err
 	}
@@ -169,7 +165,7 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	var res *sql.Rows
 	var err error
 	//添加预处理
-	stmt, err := querytx.tx.PrepareContext(ctx, query)
+	stmt, err := querytx.Tx.PrepareContext(ctx, query)
 	if err != nil {
 		return res, err
 	}
