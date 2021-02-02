@@ -73,9 +73,9 @@ func (r *Row) ToStruct(st interface{}) error {
 		return r.lastError
 	}
 
-	if r.transaction {
-		defer r.rs.rs.Close()
-	}
+	// if r.transaction {
+	defer r.rs.rs.Close()
+	// }
 
 	v := reflect.New(stTypeInd)
 
@@ -128,9 +128,9 @@ func (r *Rows) ToArray() (data [][]string, err error) {
 		return nil, r.lastError
 	}
 
-	if r.transaction {
-		defer r.rs.Close()
-	}
+	// if r.transaction {
+	defer r.rs.Close()
+	// }
 
 	// defer r.rs.Close()
 
@@ -191,9 +191,9 @@ func (r *Rows) ToInterface() (data []map[string]interface{}, err error) {
 		return nil, r.lastError
 	}
 
-	if r.transaction {
-		defer r.rs.Close()
-	}
+	// if r.transaction {
+	defer r.rs.Close()
+	// }
 
 	fields, err := r.rs.Columns()
 
@@ -238,9 +238,9 @@ func (r *Rows) ToMap() (data []map[string]string, err error) {
 		return nil, r.lastError
 	}
 
-	if r.transaction {
-		defer r.rs.Close()
-	}
+	// if r.transaction {
+	defer r.rs.Close()
+	// }
 
 	fields, err := r.rs.Columns()
 
@@ -308,9 +308,9 @@ func (r *Rows) ToStruct(st interface{}) error {
 		return r.lastError
 	}
 
-	if r.transaction {
-		defer r.rs.Close()
-	}
+	// if r.transaction {
+	defer r.rs.Close()
+	// }
 
 	//初始化struct
 	v := reflect.New(stTypeInd.Elem())
