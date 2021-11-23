@@ -3,6 +3,7 @@ package querydb
 import (
 	"database/sql"
 	"errors"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -33,26 +34,25 @@ const (
 
 // QueryBuilder 查询构造器
 type QueryBuilder struct {
-	connection  Connection
-	table       []string
-	columns     []string
-	where       []w
-	orders      []string
-	groups      []string
-	limit       int64
-	offset      int64
-	distinct    bool
-	transaction bool
-	binds       []string
-	joins       []join
-	unions      []union
-	unlimmit    int64
-	unoffset    int64
-	unorders    []string
+	connection Connection
+	table      []string
+	columns    []string
+	where      []w
+	orders     []string
+	groups     []string
+	limit      int64
+	offset     int64
+	distinct   bool
+	binds      []string
+	joins      []join
+	unions     []union
+	unLimit    int64
+	unOffset   int64
+	unOrders   []string
 
 	args      []interface{}
 	whereArgs []interface{}
-	datas     []map[string]interface{}
+	data      []map[string]interface{}
 }
 type join struct {
 	table    string
@@ -272,13 +272,13 @@ func (query *QueryBuilder) Union(unions ...QueryBuilder) *QueryBuilder {
 
 //UnionOffset .
 func (query *QueryBuilder) UnionOffset(offset int64) *QueryBuilder {
-	query.unoffset = offset
+	query.unOffset = offset
 	return query
 }
 
 //UnionLimit .
 func (query *QueryBuilder) UnionLimit(limit int64) *QueryBuilder {
-	query.unlimmit = limit
+	query.unLimit = limit
 	return query
 }
 
@@ -289,7 +289,7 @@ func (query *QueryBuilder) UnionOrderBy(column string, direction string) *QueryB
 	} else {
 		column += " " + ASC
 	}
-	query.unorders = append(query.unorders, column)
+	query.unOrders = append(query.unOrders, column)
 	return query
 }
 
@@ -362,8 +362,8 @@ func (query *QueryBuilder) beforeArg(value ...interface{}) {
 	query.whereArgs = append(query.whereArgs, value...)
 }
 
-func (query *QueryBuilder) setData(datas ...map[string]interface{}) {
-	query.datas = datas
+func (query *QueryBuilder) setData(data ...map[string]interface{}) {
+	query.data = data
 }
 
 func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values map[string][]interface{}, err error) {
@@ -421,7 +421,7 @@ func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values 
 				}
 			}
 
-			tag := stValue.Type().Field(i).Tag.Get("json")
+			tag := stValue.Type().Field(i).Tag.Get("db")
 			attrList := strings.Split(tag, ",")
 			ignore = false
 
@@ -439,7 +439,7 @@ func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values 
 			}
 
 			column := attrList[0]
-			if column != "" {
+			if column != "" && !b.IsZero(v) {
 				if _, ok := values[column]; ok {
 					values[column] = append(values[column], v.Interface())
 				} else {
@@ -488,6 +488,44 @@ func (b *QueryBuilder) getInsertMap(data interface{}) (columns []string, values 
 	return
 }
 
+func (query *QueryBuilder) IsZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return math.Float64bits(v.Float()) == 0
+	case reflect.Complex64, reflect.Complex128:
+		c := v.Complex()
+		return math.Float64bits(real(c)) == 0 && math.Float64bits(imag(c)) == 0
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !v.Index(i).IsZero() {
+				return false
+			}
+		}
+		return true
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+		return v.IsNil()
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if !v.Field(i).IsZero() {
+				return false
+			}
+		}
+		return true
+	default:
+		// This should never happens, but will act as a safeguard for
+		// later, as a default value doesn't makes sense here.
+		panic(&reflect.ValueError{"reflect.Value.IsZero", v.Kind()})
+	}
+}
+
 //MultiInsert 批量插入
 func (query *QueryBuilder) MultiInsert(datas ...interface{}) (int64, error) {
 
@@ -518,7 +556,6 @@ func (query *QueryBuilder) MultiInsert(datas ...interface{}) (int64, error) {
 		result, err := query.connection.Exec(sql, query.args...)
 		if err != nil {
 			err = NewDBError(err.Error(), query.connection.GetLastSql())
-			// Log.Info(err.Error())
 			return 0, err
 		}
 		return result.RowsAffected()
@@ -589,7 +626,6 @@ func (query *QueryBuilder) Replace(datas ...interface{}) (int64, error) {
 		result, err := query.connection.Exec(sql, query.args...)
 		if err != nil {
 			err = NewDBError(err.Error(), query.connection.GetLastSql())
-			// Log.Info(err.Error())
 			return 0, err
 		}
 		return result.RowsAffected()
@@ -657,7 +693,6 @@ func (query *QueryBuilder) InsertUpdate(insert interface{}, update interface{}) 
 	result, err := query.connection.Exec(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -707,7 +742,6 @@ func (query *QueryBuilder) Insert(data interface{}) (int64, error) {
 	result, err := query.connection.Exec(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
 		return 0, err
 	}
 	return result.LastInsertId()
@@ -748,7 +782,6 @@ func (query *QueryBuilder) Update(data interface{}) (int64, error) {
 	result, err := query.connection.Exec(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -779,7 +812,6 @@ func (query *QueryBuilder) Delete() (int64, error) {
 	result, err := query.connection.Exec(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -812,13 +844,12 @@ func (query *QueryBuilder) Exec(sql string, args ...interface{}) (int64, error) 
 	result, err := query.connection.Exec(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-//Exec 原始SQl语句执行
+//ExecSQL 原始SQl语句执行
 func (query *QueryBuilder) ExecSQL(sql string, args ...interface{}) string {
 	query.connection.LastSql(sql, args...)
 	return query.connection.GetLastSql().ToString()
@@ -828,26 +859,28 @@ func (query *QueryBuilder) QueryRows(sql string, args ...interface{}) *Rows {
 	rows, err := query.connection.Query(sql, args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		return &Rows{rs: nil, lastError: err, transaction: query.transaction}
+		return &Rows{rs: nil, lastError: err}
 	}
-	return &Rows{rs: rows, lastError: err, transaction: query.transaction}
+	return &Rows{rs: rows, lastError: err}
 }
 
+//QueryRowsSQL ...
 func (query *QueryBuilder) QueryRowsSQL(sql string, args ...interface{}) string {
 	query.connection.LastSql(sql, args...)
 	return query.connection.GetLastSql().ToString()
 }
 
+//QueryRowSQL ...
 func (query *QueryBuilder) QueryRowSQL(sql string, args ...interface{}) string {
 	query.connection.LastSql(sql, args...)
 	return query.connection.GetLastSql().ToString()
 }
 
+// QueryRow ...
 func (query *QueryBuilder) QueryRow(sql string, args ...interface{}) *Row {
 	rs := query.QueryRows(sql, args...)
 	r := new(Row)
 	r.rs = rs
-	r.transaction = query.transaction
 	return r
 }
 
@@ -858,7 +891,6 @@ func (query *QueryBuilder) Row() *Row {
 	rs := query.Rows()
 	r := new(Row)
 	r.rs = rs
-	r.transaction = query.transaction
 	return r
 }
 
@@ -885,8 +917,7 @@ func (query *QueryBuilder) Rows() *Rows {
 	rows, err := query.connection.Query(sql, query.args...)
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
-		// Log.Info(err.Error())
-		return &Rows{rs: nil, lastError: err, transaction: query.transaction}
+		return &Rows{rs: nil, lastError: err}
 	}
-	return &Rows{rs: rows, lastError: err, transaction: query.transaction}
+	return &Rows{rs: rows, lastError: err}
 }

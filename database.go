@@ -12,12 +12,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-//Rows 行
-// type Rows = sql.Rows
-
-//Result 数据集合
-// type Result = sql.Result
-
 // Connection 链接
 type Connection interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
@@ -50,7 +44,7 @@ type QueryTx struct {
 
 //NewQuery 生成一个新的查询构造器
 func (querydb *QueryDb) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querydb, transaction: false}
+	return &QueryBuilder{connection: querydb}
 }
 
 //Begin 开启一个事务
@@ -59,7 +53,7 @@ func (querydb *QueryDb) Begin() (*QueryTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &QueryTx{Tx: tx}, nil
+	return &QueryTx{Tx: tx, link: querydb.link}, nil
 }
 
 //Exec 复用执行语句
@@ -76,13 +70,15 @@ func (querydb *QueryDb) Exec(query string, args ...interface{}) (sql.Result, err
 
 	//添加预处理
 	stmt, err := querydb.db.PrepareContext(ctx, query)
+
 	if err != nil {
 		querydb.db.PingContext(ctx)
 		return res, err
 	}
+	defer stmt.Close()
 	res, err = stmt.ExecContext(ctx, args...)
-	// res, err = querydb.db.ExecContext(ctx, query, args...)
 	querydb.db.PingContext(ctx)
+
 	return res, err
 }
 
@@ -104,8 +100,8 @@ func (querydb *QueryDb) Query(query string, args ...interface{}) (*sql.Rows, err
 		querydb.db.PingContext(ctx)
 		return res, err
 	}
+	defer stmt.Close()
 	res, err = stmt.QueryContext(ctx, args...)
-	// res, err = querydb.db.QueryContext(ctx, query, args...)
 	querydb.db.PingContext(ctx)
 	return res, err
 }
@@ -127,7 +123,7 @@ func (querytx *QueryTx) Rollback() error {
 
 // NewQuery 生成一个新的查询构造器
 func (querytx *QueryTx) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querytx, transaction: true}
+	return &QueryBuilder{connection: querytx}
 }
 
 //Exec 复用执行语句
@@ -148,7 +144,6 @@ func (querytx *QueryTx) Exec(query string, args ...interface{}) (sql.Result, err
 		return res, err
 	}
 	res, err = stmt.ExecContext(ctx, args...)
-	// res, err = querytx.tx.ExecContext(ctx, query, args...)
 	return res, err
 
 }
@@ -164,13 +159,13 @@ func (querytx *QueryTx) Query(query string, args ...interface{}) (*sql.Rows, err
 	ctx := context.TODO()
 	var res *sql.Rows
 	var err error
+
 	//添加预处理
 	stmt, err := querytx.Tx.PrepareContext(ctx, query)
 	if err != nil {
 		return res, err
 	}
 	res, err = stmt.QueryContext(ctx, args...)
-	// res, err = querytx.tx.QueryContext(ctx, query, args...)
 	return res, err
 }
 
