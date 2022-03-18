@@ -3,6 +3,7 @@ package querydb
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"math"
 	"reflect"
 	"strconv"
@@ -35,6 +36,7 @@ const (
 // QueryBuilder 查询构造器
 type QueryBuilder struct {
 	connection Connection
+	debug      bool
 	table      []string
 	columns    []string
 	where      []w
@@ -915,6 +917,9 @@ func (query *QueryBuilder) Rows() *Rows {
 	grammar := Grammar{builder: query}
 	sql := grammar.Select()
 	rows, err := query.connection.Query(sql, query.args...)
+	if query.debug {
+		log.Print(query.connection.GetLastSql().ToString())
+	}
 	if err != nil {
 		err = NewDBError(err.Error(), query.connection.GetLastSql())
 		return &Rows{rs: nil, lastError: err}

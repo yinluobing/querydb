@@ -1,4 +1,4 @@
-module github.com/pm-esd/querydb
+module github.com/yinluobing/querydb
 
 go 1.17
 

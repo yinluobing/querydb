@@ -44,7 +44,7 @@ type QueryTx struct {
 
 //NewQuery 生成一个新的查询构造器
 func (querydb *QueryDb) NewQuery() *QueryBuilder {
-	return &QueryBuilder{connection: querydb}
+	return &QueryBuilder{connection: querydb, debug: querydb.link.Debug}
 }
 
 //Begin 开启一个事务
